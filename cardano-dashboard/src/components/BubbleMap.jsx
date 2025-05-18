@@ -1,13 +1,11 @@
-import * as d3 from "d3"
+import CircularPacking from "./CirclePacking"
 
-export default function BubbleMap({
-    data,
-    width = 640,
-    height = 400,
-    marginTop = 20,
-    marginRight = 20,
-    marginBottom = 20,
-    marginLeft = 20
-}) {
-    const x = d3.sc
+export default function BubbleMap(props) 
+{
+    if (props.width === 0) {
+        return null;
+    }
+    return (
+        <CircularPacking width={props.width} height={props.height} data={props.data} />
+    )
 }

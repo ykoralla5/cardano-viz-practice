@@ -1,7 +1,7 @@
 import React from "react"
 import { clsx } from 'clsx'
-import * as d3 from "d3";
-import { data } from "../data"
+import BubbleMap from "./BubbleMap"
+import { dummyPools } from "../data"
 
 export default function Main() {
     // State values
@@ -14,10 +14,10 @@ export default function Main() {
 
     return(
         <main>
-            <header>
-                <h1>Cardano dashboard</h1>
-                <p className="intro">Bubble map showing staking pools of Cardano!</p>
-            </header>
+            
+            <section>
+                <BubbleMap width={640} height={400} data={dummyPools}></BubbleMap>
+            </section>
         </main>
     )
 }

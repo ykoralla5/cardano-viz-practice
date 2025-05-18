@@ -1,4 +1,4 @@
-const dummyPools = [
+export const dummyPools = [
   {
     id: "pool1",
     ticker: "SUNNY",
@@ -47,7 +47,7 @@ const dummyPools = [
     id: "pool5",
     ticker: "ECO",
     name: "Eco Friendly Pool",
-    stake: 200000000,
+    stake: 700000000,
     blocksMinted: 22,
     activeDelegators: 80,
     country: "SE",
