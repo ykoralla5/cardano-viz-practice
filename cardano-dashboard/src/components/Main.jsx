@@ -16,7 +16,7 @@ export default function Main() {
         <main>
             
             <section>
-                <BubbleMap width={640} height={400} data={dummyPools}></BubbleMap>
+                <BubbleMap />
             </section>
         </main>
     )

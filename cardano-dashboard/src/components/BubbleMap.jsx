@@ -6,6 +6,6 @@ export default function BubbleMap(props)
         return null;
     }
     return (
-        <CircularPacking width={props.width} height={props.height} data={props.data} />
+        <CircularPacking />
     )
 }
