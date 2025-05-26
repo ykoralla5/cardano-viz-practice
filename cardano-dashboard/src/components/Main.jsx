@@ -1,7 +1,6 @@
 import React from "react"
 import { clsx } from 'clsx'
 import BubbleMap from "./BubbleMap"
-import { dummyPools } from "../data"
 
 export default function Main() {
     // State values
@@ -15,8 +14,8 @@ export default function Main() {
     return(
         <main>
             
-            <section>
-                <BubbleMap />
+            <section style={{height: '90vh', width: '100vw', display: 'flex', flexDirection: 'column'}}>
+                <BubbleMap totalStake={22090000000}/>
             </section>
         </main>
     )

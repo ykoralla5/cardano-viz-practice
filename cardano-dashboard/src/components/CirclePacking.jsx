@@ -4,25 +4,24 @@ import { useEffect, useRef, useState } from "react"
 import { fetchPools } from "../api/fetchPools"
 import { fetchPoolData } from "../api/fetchPoolData"
 
-export default function CircularPacking ({})
+export default function CircularPacking ({ totalStake })
  {
-    //const [allPools, setAllPools] = useState(null)
     const [poolData, setPoolData] = useState([])
     const svgReference = useRef()
+    const currentTotalActiveStake = totalStake //22.09 billion ADA
 
     useEffect(() => {
 
         const fetchData = async () => {
             const basePools = await fetchPools()
-            //console.log(basePools)
+            // For each pool, extract more pool information
             const detailedData = await Promise.all(
                 basePools.map(async (pool) => {
                     const history = await fetchPoolData(pool.pool_id)
-                    const latestEpoch = history[history.length - 1]
-                    console.log(history.live_delegators)
                     return {
                         ...pool,
-                        live_delegators: latestEpoch?.live_delegators || 0
+                        live_delegators: history?.live_delegators || 0,
+                        expected_blocks_minted: ((21600 * (1-0) * parseInt(history.active_stake))/(currentTotalActiveStake*1000000)) || 0 //active stake to be from previous epoch
                     }
                 })
             )
@@ -36,61 +35,68 @@ export default function CircularPacking ({})
 
     useEffect(() => {
 
-        if (poolData.length === 0) return;
+        if (poolData.length === 0) return
 
-        const width = screen.width
-        const height = screen.height
+        console.log(poolData)
 
-        const stakeData = poolData.map((obj) => obj.active_stake)
-        //console.log(stakeData)
-        const stakeBlocksMinted = poolData.map((obj) => obj.blocks_minted)
+        const width = window.innerWidth //screen.width
+        const height = window.innerHeight//screen.height
+
+        const stakeData = poolData.map((obj) => parseInt(obj.active_stake))
+        //console.log(typeof(parseFloat(d3.min(stakeData))), d3.max(stakeData))
+        const stakeBlocksMinted = poolData.map((obj) => parseInt(obj.blocks_minted))
         //console.log(stakeBlocksMinted)
-        const stakeActiveDelegators = poolData.map((obj) => obj.live_delegators)
+        const stakeActiveDelegators = poolData.map((obj) => parseInt(obj.live_delegators))
         //console.log(stakeActiveDelegators)
-        const stakeSaturation = poolData.map((obj) => obj.live_saturation)
+        const stakeSaturation = poolData.map((obj) => parseFloat(obj.live_saturation))
         //console.log(stakeSaturation)
 
         const svg = d3.select(svgReference.current)
             .attr('width', width)
-            .attr('height', height);
+            .attr('height', height)
 
         svg.selectAll('*').remove() // Remove any existing content
 
         const radiusScale = d3.scaleSqrt()
             .domain([d3.min(stakeData), d3.max(stakeData)])
-            .range([5, 50])
+            .range([5, 100])
 
         const xScale = d3.scaleLinear()
-            .domain([0, d3.max(stakeBlocksMinted)])
+            .domain([0, d3.max(stakeBlocksMinted)]) // or blocks minted / expected?
             .range([100, width - 100])
 
         const yScale = d3.scaleLinear()
             .domain([0, d3.max(stakeActiveDelegators)])
             .range([100, height - 100])
 
-        const color = d3.scaleLinear()
+        const fillColor = d3.scaleLinear()
             .domain([0, d3.max(stakeSaturation)])
-            .range(["yellow", "red"])
-            .unknown("#ccc")
+            .range(['yellow', 'red'])
+            .unknown('#ccc')
 
+        //strokecolor and stroke width scale?
+
+        // Add bubbles
         svg.selectAll('circle')
             .data(poolData)
             .enter()
             .append('circle')
             .attr('cx', d => xScale(d.blocks_minted))
-            .attr('cy', d => yScale(d.delegators_count))
+            .attr('cy', d => yScale(d.live_delegators))
             .attr('r', d => radiusScale(d.active_stake))
-            .attr('fill', d => color(d.saturation))
+            .attr('fill', d => fillColor(d.live_saturation))
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2)
 
-        //const labels = 
+        // Text for each bubble
         svg.selectAll('text')
             .data(poolData)
             .enter()
             .append('text')
-            .text(d => `Name: ${d.name}, Stake: ${d.stake}, Blocks minted: ${d.blocksMinted}, \n
-                Active delegators: ${d.activeDelegators}, Saturation: ${d.saturation}`)
-            .attr('x', d => xScale(d.blocksMinted))
-            .attr('y', d => radiusScale(d.stake) + yScale(d.activeDelegators)) // add radius to display text below circle
+            .text(d => `Name: ${d.metadata.name}, Stake: ${d.active_stake}, Blocks minted: ${d.blocks_minted}, \n
+                Active delegators: ${d.live_delegators}, Saturation: ${d.live_saturation}`)
+            .attr('x', d => xScale(d.blocks_minted))
+            .attr('y', d =>  yScale(d.live_delegators) + radiusScale(d.active_stake)) // add radius and stroke width to display text below circle
             .attr('font-size', '15px')
             .attr('text-anchor', 'middle')
             .attr('alignment-baseline', 'before-edge')

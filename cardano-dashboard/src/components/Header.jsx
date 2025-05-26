@@ -1,8 +1,7 @@
 export default function Header() {
     return (
-        <header>
+        <header style={{height: '10vh', width: '100vw', display: 'flex', flexDirection: 'column'}}>
             <h1>Cardano dashboard</h1>
-            <p className="intro">Bubble map showing staking pools of Cardano!</p>
         </header>
     )
 }

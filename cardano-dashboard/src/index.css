@@ -17,10 +17,16 @@ h1 {
 
 header {
   text-align: center;
+  height: 10vh;
+  padding: 1rem;
 }
 
 section {
   margin-block: 12.5px;
+}
+
+section.bubble-map {
+  height: 90vh;
 }
 
 section.game-status {

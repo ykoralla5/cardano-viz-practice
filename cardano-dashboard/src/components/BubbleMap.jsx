@@ -1,11 +1,11 @@
 import CircularPacking from "./CirclePacking"
 
-export default function BubbleMap(props) 
+export default function BubbleMap({ totalStake }) 
 {
-    if (props.width === 0) {
-        return null;
-    }
+    // if (props.width === 0) {
+    //     return null;
+    // }
     return (
-        <CircularPacking />
+        <CircularPacking totalStake={totalStake}/>
     )
 }
