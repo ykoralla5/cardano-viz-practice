@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-w(i3!6f5o5%+6o%3-i#19@_a^6=2by2jrnua+25!&tggi7kmy&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+#ALLOWED_HOSTS = ['localhost', '127.0.0.1'] # Add 'yourdomain .com' when in production
 
 
 # Application definition
@@ -41,18 +41,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api',
-    'corsheaders'
+    'corsheaders',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
+    'django.middleware.clickjacking.XFrameOptionsMiddleware'
 ]
 
 ROOT_URLCONF = 'cardano_backend.urls'
@@ -132,3 +133,15 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True # Keep for development only
+
+#CORS_ORIGIN_ALLOW_ALL = False
+
+#CORS_ORIGIN_WHITELIST = ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:8000']
+
+
+# Allow connection to port of frontend
+# CORS_ALLOWED_ORIGINS = [
+#    'http://localhost:5173',
+# ]
+
+# CORS_ALLOW_CREDENTIALS = True

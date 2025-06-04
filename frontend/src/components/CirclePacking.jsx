@@ -11,22 +11,22 @@ export default function CircularPacking ({ totalStake })
     const currentTotalActiveStake = totalStake //22.09 billion ADA
 
     useEffect(() => {
-
         const fetchData = async () => {
             const basePools = await fetchPools()
             // For each pool, extract more pool information
-            const detailedData = await Promise.all(
-                basePools.map(async (pool) => {
-                    const history = await fetchPoolData(pool.pool_id)
-                    return {
-                        ...pool,
-                        live_delegators: history?.live_delegators || 0,
-                        expected_blocks_minted: ((21600 * (1-0) * parseInt(history.active_stake))/(currentTotalActiveStake*1000000)) || 0 //active stake to be from previous epoch
-                    }
-                })
-            )
-            //console.log(detailedData)
-            setPoolData(detailedData)
+            // const detailedData = await Promise.all(
+            //     basePools.map(async (pool) => {
+            //         const history = await fetchPoolData(pool.pool_id)
+            //         return {
+            //             ...pool,
+            //             live_delegators: history?.live_delegators || 0,
+            //             expected_blocks_minted: ((21600 * (1-0) * parseInt(history.active_stake))/(currentTotalActiveStake*1000000)) || 0 //active stake to be from previous epoch
+            //         }
+            //     })
+            // )
+            console.log(basePools)
+            //setPoolData(detailedData)
+            setPoolData(basePools)
         }
         fetchData()
     }, []);

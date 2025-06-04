@@ -13,5 +13,5 @@ class StakePool(models.Model):
     description = models.TextField(max_length=255)
     homepage = models.URLField()
 
-def __str__(self):
-    return self.pool_name
+    def __str__(self):
+        return self.pool_name

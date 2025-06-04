@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.npmrc
 
 # Editor directories and files
 .vscode/*
@@ -23,8 +24,11 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
-# .gitignore
-frontend/node_modules/
+# frontend
+/frontend/node_modules/
+/frontend/.env
 
-.npmrc
+# backend
+/backend/backend/cardano_backend/settings.py
+/backend/.env
+
