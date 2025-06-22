@@ -1,4 +1,4 @@
-#!/home/yukta/react-projects/cardano-viz-practice/cardano-dashboard/backend/venv/bin/python3
+#!/home/matija/cardano-viz-practice/backend/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
