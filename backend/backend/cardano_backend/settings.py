@@ -82,17 +82,17 @@ WSGI_APPLICATION = 'cardano_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'django_backend',
-        'USER' : 'yukta',
-        'PASSWORD' : 'password',
+        'NAME': 'cardano_db_django',
+        'USER' : 'cardano_db_django_owner',
+        'PASSWORD' : 'cardano123',
         'HOST': 'localhost',
         'PORT' : '5432'
     },
     'cardano': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'django_cardano_db',
-        'USER' : 'yukta',
-        'PASSWORD' : 'password',
+        'NAME': 'cardano_db_filtered',
+        'USER' : 'cardano_db_filtered_owner',
+        'PASSWORD' : 'cardano123',
         'HOST': 'localhost',
         'PORT' : '5432'
     }
