@@ -1,43 +1,272 @@
+# This is an auto-generated Django model module.
+# You'll have to do the following manually to clean this up:
+#   * Rearrange models' order
+#   * Make sure each model has one field with primary_key=True
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
-class StakePool(models.Model):
-    pool_id = models.CharField(max_length=64, unique=True)
-    name = models.CharField(max_length=100, default="Unnamed Pool")
-    ticker = models.CharField(max_length=10)
-    description = models.TextField(null=True, blank=True)
-    url = models.URLField()
-    homepage = models.URLField()
-    #created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.pool_id
-
-class StakePoolSnapshot(models.Model):
-    pool_id = models.CharField(max_length=64)
-    epoch = models.IntegerField()
-    active_stake = models.BigIntegerField()
-    live_stake = models.BigIntegerField()
-    live_saturation = models.FloatField()
-    blocks_minted = models.IntegerField()
-    timestamp=models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.pool_id
+class Block(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash = models.BinaryField(unique=True)
+    epoch_no = models.IntegerField(blank=True, null=True)
+    slot_no = models.BigIntegerField(blank=True, null=True)
+    epoch_slot_no = models.IntegerField(blank=True, null=True)
+    block_no = models.IntegerField(blank=True, null=True)
+    previous_id = models.BigIntegerField(blank=True, null=True)
+    slot_leader_id = models.BigIntegerField()
+    size = models.IntegerField()
+    time = models.DateTimeField()
+    tx_count = models.BigIntegerField()
+    proto_major = models.IntegerField()
+    proto_minor = models.IntegerField()
+    vrf_key = models.CharField(blank=True, null=True)
+    op_cert = models.BinaryField(blank=True, null=True)
+    op_cert_counter = models.BigIntegerField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('pool_id', 'epoch')
+        managed = False
+        db_table = 'block'
+
+
+class Delegation(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    addr_id = models.BigIntegerField()
+    cert_index = models.IntegerField()
+    pool_hash_id = models.BigIntegerField()
+    active_epoch_no = models.BigIntegerField()
+    tx_id = models.BigIntegerField()
+    slot_no = models.BigIntegerField()
+    redeemer_id = models.BigIntegerField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'delegation'
+
 
 class Epoch(models.Model):
-    number = models.IntegerField(unique=True)
-    #start_time = models.DateTimeField()
-    #end_time = models.DateTimeField()
-    
-    #url = models.URLField()
-    #ticker = models.CharField(max_length=9)
-    #pool_name = models.CharField()
-    #description = models.TextField(max_length=255)
-    
-    def __str__(self):
-        return self.number
+    id = models.BigAutoField(primary_key=True)
+    out_sum = models.DecimalField(max_digits=39, decimal_places=0)
+    fees = models.DecimalField(max_digits=20, decimal_places=0)
+    tx_count = models.IntegerField()
+    blk_count = models.IntegerField()
+    no = models.IntegerField(unique=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
 
-    
+    class Meta:
+        managed = False
+        db_table = 'epoch'
+
+
+class EpochParam(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    epoch_no = models.IntegerField()
+    min_fee_a = models.IntegerField()
+    min_fee_b = models.IntegerField()
+    max_block_size = models.IntegerField()
+    max_tx_size = models.IntegerField()
+    max_bh_size = models.IntegerField()
+    key_deposit = models.DecimalField(max_digits=20, decimal_places=0)
+    pool_deposit = models.DecimalField(max_digits=20, decimal_places=0)
+    max_epoch = models.IntegerField()
+    optimal_pool_count = models.IntegerField()
+    influence = models.FloatField()
+    monetary_expand_rate = models.FloatField()
+    treasury_growth_rate = models.FloatField()
+    decentralisation = models.FloatField()
+    protocol_major = models.IntegerField()
+    protocol_minor = models.IntegerField()
+    min_utxo_value = models.DecimalField(max_digits=20, decimal_places=0)
+    min_pool_cost = models.DecimalField(max_digits=20, decimal_places=0)
+    nonce = models.BinaryField(blank=True, null=True)
+    cost_model_id = models.BigIntegerField(blank=True, null=True)
+    price_mem = models.FloatField(blank=True, null=True)
+    price_step = models.FloatField(blank=True, null=True)
+    max_tx_ex_mem = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    max_tx_ex_steps = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    max_block_ex_mem = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    max_block_ex_steps = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    max_val_size = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    collateral_percent = models.IntegerField(blank=True, null=True)
+    max_collateral_inputs = models.IntegerField(blank=True, null=True)
+    block_id = models.BigIntegerField()
+    extra_entropy = models.BinaryField(blank=True, null=True)
+    coins_per_utxo_size = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    pvt_motion_no_confidence = models.FloatField(blank=True, null=True)
+    pvt_committee_normal = models.FloatField(blank=True, null=True)
+    pvt_committee_no_confidence = models.FloatField(blank=True, null=True)
+    pvt_hard_fork_initiation = models.FloatField(blank=True, null=True)
+    dvt_motion_no_confidence = models.FloatField(blank=True, null=True)
+    dvt_committee_normal = models.FloatField(blank=True, null=True)
+    dvt_committee_no_confidence = models.FloatField(blank=True, null=True)
+    dvt_update_to_constitution = models.FloatField(blank=True, null=True)
+    dvt_hard_fork_initiation = models.FloatField(blank=True, null=True)
+    dvt_p_p_network_group = models.FloatField(blank=True, null=True)
+    dvt_p_p_economic_group = models.FloatField(blank=True, null=True)
+    dvt_p_p_technical_group = models.FloatField(blank=True, null=True)
+    dvt_p_p_gov_group = models.FloatField(blank=True, null=True)
+    dvt_treasury_withdrawal = models.FloatField(blank=True, null=True)
+    committee_min_size = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    committee_max_term_length = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    gov_action_lifetime = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    gov_action_deposit = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    drep_deposit = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    drep_activity = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    pvtpp_security_group = models.FloatField(blank=True, null=True)
+    min_fee_ref_script_cost_per_byte = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'epoch_param'
+
+
+class EpochStake(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    addr_id = models.BigIntegerField()
+    pool_id = models.BigIntegerField()
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+    epoch_no = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'epoch_stake'
+        unique_together = (('epoch_no', 'addr_id', 'pool_id'),)
+
+
+class OffChainPoolData(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    pool_id = models.BigIntegerField()
+    ticker_name = models.CharField()
+    hash = models.BinaryField()
+    json = models.JSONField()
+    bytes = models.BinaryField()
+    pmr_id = models.BigIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'off_chain_pool_data'
+        unique_together = (('pool_id', 'pmr_id'),)
+
+
+class PoolHash(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash_raw = models.BinaryField(unique=True)
+    view = models.CharField()
+
+    class Meta:
+        managed = False
+        db_table = 'pool_hash'
+
+
+class PoolRetire(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash_id = models.BigIntegerField()
+    cert_index = models.IntegerField()
+    announced_tx_id = models.BigIntegerField()
+    retiring_epoch = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'pool_retire'
+
+
+class PoolUpdate(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash_id = models.BigIntegerField()
+    cert_index = models.IntegerField()
+    vrf_key_hash = models.BinaryField()
+    pledge = models.DecimalField(max_digits=20, decimal_places=0)
+    active_epoch_no = models.BigIntegerField()
+    meta_id = models.BigIntegerField(blank=True, null=True)
+    margin = models.FloatField()
+    fixed_cost = models.DecimalField(max_digits=20, decimal_places=0)
+    registered_tx_id = models.BigIntegerField()
+    reward_addr_id = models.BigIntegerField()
+    deposit = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'pool_update'
+
+
+class Reserve(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    addr_id = models.BigIntegerField()
+    cert_index = models.IntegerField()
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+    tx_id = models.BigIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'reserve'
+
+
+class Reward(models.Model):
+    addr_id = models.BigIntegerField()
+    type = models.TextField()  # This field type is a guess.
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+    spendable_epoch = models.BigIntegerField()
+    pool_id = models.BigIntegerField()
+    earned_epoch = models.BigIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'reward'
+        unique_together = (('addr_id', 'type', 'earned_epoch', 'pool_id'),)
+
+
+class SlotLeader(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash = models.BinaryField(unique=True)
+    pool_hash_id = models.BigIntegerField(blank=True, null=True)
+    description = models.CharField()
+
+    class Meta:
+        managed = False
+        db_table = 'slot_leader'
+
+
+class StakeAddress(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash_raw = models.BinaryField(unique=True)
+    view = models.CharField()
+    script_hash = models.BinaryField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'stake_address'
+
+
+class Treasury(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    addr_id = models.BigIntegerField()
+    cert_index = models.IntegerField()
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+    tx_id = models.BigIntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'treasury'
+
+
+class Tx(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    hash = models.BinaryField(unique=True)
+    block_id = models.BigIntegerField()
+    block_index = models.IntegerField()
+    out_sum = models.DecimalField(max_digits=20, decimal_places=0)
+    fee = models.DecimalField(max_digits=20, decimal_places=0)
+    deposit = models.BigIntegerField(blank=True, null=True)
+    size = models.IntegerField()
+    invalid_before = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    invalid_hereafter = models.DecimalField(max_digits=20, decimal_places=0, blank=True, null=True)
+    valid_contract = models.BooleanField()
+    script_size = models.IntegerField()
+    treasury_donation = models.DecimalField(max_digits=20, decimal_places=0)
+
+    class Meta:
+        managed = False
+        db_table = 'tx'
