@@ -29,6 +29,7 @@ class Block(models.Model):
     class Meta:
         managed = False
         db_table = 'block'
+        app_label = 'api'
 
 
 class Delegation(models.Model):
@@ -44,6 +45,7 @@ class Delegation(models.Model):
     class Meta:
         managed = False
         db_table = 'delegation'
+        app_label = 'api'
 
 
 class Epoch(models.Model):
@@ -59,6 +61,7 @@ class Epoch(models.Model):
     class Meta:
         managed = False
         db_table = 'epoch'
+        app_label = 'api'
 
 
 class EpochParam(models.Model):
@@ -121,6 +124,7 @@ class EpochParam(models.Model):
     class Meta:
         managed = False
         db_table = 'epoch_param'
+        app_label = 'api'
 
 
 class EpochStake(models.Model):
@@ -134,6 +138,7 @@ class EpochStake(models.Model):
         managed = False
         db_table = 'epoch_stake'
         unique_together = (('epoch_no', 'addr_id', 'pool_id'),)
+        app_label = 'api'
 
 
 class OffChainPoolData(models.Model):
@@ -149,6 +154,7 @@ class OffChainPoolData(models.Model):
         managed = False
         db_table = 'off_chain_pool_data'
         unique_together = (('pool_id', 'pmr_id'),)
+        app_label = 'api'
 
 
 class PoolHash(models.Model):
@@ -159,6 +165,7 @@ class PoolHash(models.Model):
     class Meta:
         managed = False
         db_table = 'pool_hash'
+        app_label = 'api'
 
 
 class PoolRetire(models.Model):
@@ -171,6 +178,7 @@ class PoolRetire(models.Model):
     class Meta:
         managed = False
         db_table = 'pool_retire'
+        app_label = 'api'
 
 
 class PoolUpdate(models.Model):
@@ -190,6 +198,7 @@ class PoolUpdate(models.Model):
     class Meta:
         managed = False
         db_table = 'pool_update'
+        app_label = 'api'
 
 
 class Reserve(models.Model):
@@ -202,6 +211,7 @@ class Reserve(models.Model):
     class Meta:
         managed = False
         db_table = 'reserve'
+        app_label = 'api'
 
 
 class Reward(models.Model):
@@ -216,6 +226,7 @@ class Reward(models.Model):
         managed = False
         db_table = 'reward'
         unique_together = (('addr_id', 'type', 'earned_epoch', 'pool_id'),)
+        app_label = 'api'
 
 
 class SlotLeader(models.Model):
@@ -227,6 +238,7 @@ class SlotLeader(models.Model):
     class Meta:
         managed = False
         db_table = 'slot_leader'
+        app_label = 'api'
 
 
 class StakeAddress(models.Model):
@@ -238,6 +250,7 @@ class StakeAddress(models.Model):
     class Meta:
         managed = False
         db_table = 'stake_address'
+        app_label = 'api'
 
 
 class Treasury(models.Model):
@@ -250,6 +263,7 @@ class Treasury(models.Model):
     class Meta:
         managed = False
         db_table = 'treasury'
+        app_label = 'api'
 
 
 class Tx(models.Model):
@@ -270,3 +284,4 @@ class Tx(models.Model):
     class Meta:
         managed = False
         db_table = 'tx'
+        app_label = 'api'

@@ -32,4 +32,6 @@ dist-ssr
 /backend/backend/cardano_backend/settings.py
 /backend/.env
 /backend/venv/
-
+/backend/backend/api/__pycache__
+/backend/backend/cardano_backend/__pycache__
+*.pyc

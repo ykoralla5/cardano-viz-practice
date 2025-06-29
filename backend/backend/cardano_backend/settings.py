@@ -91,12 +91,14 @@ DATABASES = {
     'cardano': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'cardano_db_filtered',
-        'USER' : 'cardano_db_filtered_owner',
+        'USER' : 'cardano_db_filtered_selector', # Access to user with select privileges and not owner
         'PASSWORD' : 'cardano123',
         'HOST': 'localhost',
         'PORT' : '5432'
     }
 }
+
+DATABASE_ROUTERS = ['cardano_backend.routers.CardanoDBRouter']
 
 
 # Password validation

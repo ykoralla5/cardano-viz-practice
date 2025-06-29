@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.db.models import Max, Count
+from django.db.models import Max
 from . import models
 
 def get_delegators(request):
@@ -11,15 +11,28 @@ def get_delegators(request):
         try:
             epoch_no = int(epoch_param)
         except ValueError:
-            return JsonResponse({"error": "Epoch number must be an integer"}, status=404)
+            return JsonResponse({'Error': 'Epoch number must be an integer'}, status=404)
     else:
         epoch_no = models.EpochStake.objects.aggregate(max_epoch=Max("epoch_no"))["max_epoch"]
         if epoch_no is None:
-            return JsonResponse({"error": "No epoch stake data found"}, status=404)
+            return JsonResponse({'Error': 'No epoch stake data found'}, status=404)
         
+    # Get delegators and the amount delegated by pool
     delegators = (
-        epoch_qs.filter(epoch_no=epoch_no)
-                .values("addr_id","pool_id","amount")
+        epoch_qs
+            .filter(epoch_no=epoch_no)
+            .values('addr_id','pool_id','amount')
+            .order_by('amount')
     )
+
+    if not delegators:
+        return JsonResponse({'Error': f'No data found for epoch {epoch_no}'}, status=404)
+    
+    for delegator in delegators:
+        pool = delegator['pool_id']
+        addr = delegator['addr_id']
+        delegator.setdefault(pool, []).append(addr)
+
+    return JsonResponse({'epoch': epoch_no, 'delegators': delegators})
 
 
