@@ -1,8 +1,8 @@
 export async function fetchPools() {
-    const response = await fetch("http://localhost:8000/api/pool-data")
+    const response = await fetch("http://localhost:8000/api/snapshot/delegators?epoch=560")
     if (!response.ok) {
-        throw new Error("Failed to fetch pool data")
+        throw new Error(`${response.status} Failed to fetch pool data`)
     }
-
-    return response.json()
+    const data = await response.json()
+    return data
 }

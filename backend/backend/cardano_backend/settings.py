@@ -9,9 +9,15 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
+import logging
+from dotenv import load_dotenv
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from decouple import config
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,8 +34,9 @@ SECRET_KEY = 'django-insecure-w(i3!6f5o5%+6o%3-i#19@_a^6=2by2jrnua+25!&tggi7kmy&
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-#ALLOWED_HOSTS = ['localhost', '127.0.0.1'] # Add 'yourdomain .com' when in production
+ALLOWED_HOSTS = ['localhost', '127.0.0.1'] # Add 'yourdomain .com' when in production
 
+INTERNAL_IPS = ['127.0.0.1']
 
 # Application definition
 
@@ -42,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api',
     'corsheaders',
-    'rest_framework'
+    'rest_framework',
+    #'debug_toolbar'
 ]
 
 MIDDLEWARE = [
@@ -51,6 +59,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    #'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware'
@@ -82,19 +91,19 @@ WSGI_APPLICATION = 'cardano_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'cardano_db_django',
-        'USER' : 'cardano_db_django_owner',
-        'PASSWORD' : 'cardano123',
-        'HOST': 'localhost',
-        'PORT' : '5432'
+        'NAME': os.getenv('DB_DJANGO_NAME'),
+        'USER' : os.getenv('DB_DJANGO_USER'),
+        'PASSWORD' : os.getenv('DB_DJANGO_PASSWORD'),
+        'HOST': os.getenv('DB_DJANGO_HOST'),
+        'PORT' : os.getenv('DB_DJANGO_PORT')
     },
     'cardano': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'cardano_db_filtered',
-        'USER' : 'cardano_db_filtered_selector', # Access to user with select privileges and not owner
-        'PASSWORD' : 'cardano123',
-        'HOST': 'localhost',
-        'PORT' : '5432'
+        'NAME': os.getenv('DB_CARDANO_NAME'),
+        'USER' : os.getenv('DB_CARDANO_USER'), # Access to user with select privileges and not owner
+        'PASSWORD' : os.getenv('DB_CARDANO_PASSWORD'),
+        'HOST': os.getenv('DB_DJANGO_HOST'),
+        'PORT' : os.getenv('DB_DJANGO_PORT')
     }
 }
 
@@ -155,3 +164,22 @@ CORS_ALLOW_ALL_ORIGINS = True # Keep for development only
 # ]
 
 # CORS_ALLOW_CREDENTIALS = True
+
+LOGGING = {
+    "version" : 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": "/home/matija/cardano-viz-practice/backend/backend/log/debug.log"
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}

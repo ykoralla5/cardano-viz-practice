@@ -3,5 +3,5 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('snapshot/delegators', views.get_delegators)
+    path('snapshot/delegators', views.get_delegators, name="snapshot-delegators")
 ]

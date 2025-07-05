@@ -1,110 +1,67 @@
 import * as d3 from "d3"
-import { useEffect, useRef, useState } from "react"
-//import blockfrost from "../api/blockfrost"
-import { fetchPools } from "../api/fetchPools"
-import { fetchPoolData } from "../api/fetchPoolData"
+import { Children, useEffect, useRef, useState } from "react"
 
-export default function CircularPacking ({ totalStake })
+/* Generate bubble map */
+export default function CircularPacking ({ poolData, width, height })
  {
-    const [poolData, setPoolData] = useState([])
-    const svgReference = useRef()
-    const currentTotalActiveStake = totalStake //22.09 billion ADA
+    
+    const svgReference = useRef(null)
+    //const currentTotalActiveStake = totalStake //22.09 billion ADA
+
+    // Color scale
+    const color = d3.scaleOrdinal(d3.schemeCategory10)
 
     useEffect(() => {
-        const fetchData = async () => {
-            const basePools = await fetchPools()
-            // For each pool, extract more pool information
-            // const detailedData = await Promise.all(
-            //     basePools.map(async (pool) => {
-            //         const history = await fetchPoolData(pool.pool_id)
-            //         return {
-            //             ...pool,
-            //             live_delegators: history?.live_delegators || 0,
-            //             expected_blocks_minted: ((21600 * (1-0) * parseInt(history.active_stake))/(currentTotalActiveStake*1000000)) || 0 //active stake to be from previous epoch
-            //         }
-            //     })
-            // )
-            console.log(basePools)
-            //setPoolData(detailedData)
-            setPoolData(basePools)
-        }
-        fetchData()
-    }, []);
-
-    //console.log(poolData)
-
-    useEffect(() => {
-
         if (poolData.length === 0) return
 
-        console.log(poolData)
+        // const width = window.innerWidth // screen.width
+        // const height = window.innerHeight // screen.height
 
-        const width = window.innerWidth //screen.width
-        const height = window.innerHeight//screen.height
+        //console.log(width, height)
 
-        const stakeData = poolData.map((obj) => parseInt(obj.active_stake))
-        //console.log(typeof(parseFloat(d3.min(stakeData))), d3.max(stakeData))
-        const stakeBlocksMinted = poolData.map((obj) => parseInt(obj.blocks_minted))
-        //console.log(stakeBlocksMinted)
-        const stakeActiveDelegators = poolData.map((obj) => parseInt(obj.live_delegators))
-        //console.log(stakeActiveDelegators)
-        const stakeSaturation = poolData.map((obj) => parseFloat(obj.live_saturation))
-        //console.log(stakeSaturation)
+        const root = d3
+            .hierarchy({children: poolData})
+            .sum((d) => d.amount)
+            .sort((a, b) => b.value - a.value)
+
+        const pack = d3.pack().size([width, height]).padding(4)
+
+        const nodes = pack(root).leaves()
 
         const svg = d3.select(svgReference.current)
-            .attr('width', width)
-            .attr('height', height)
 
-        svg.selectAll('*').remove() // Remove any existing content
+        const g = svg
+            .append('g')
+            .attr('transform', 'translate(0,0)')
 
-        const radiusScale = d3.scaleSqrt()
-            .domain([d3.min(stakeData), d3.max(stakeData)])
-            .range([5, 100])
+        const bubbles = g
+            .selectAll('circle')
+            .data(nodes, (d) => d.data.pool_id)
+            .join((enter) =>
+            enter
+                .append('circle')
+                .attr('cx', (d) => d.x)
+                .attr('cy', (d) => d.y)
+                .attr('r', 0)
+                .style('opacity', 0.8)
+                .style('fill', (d) => d3.interpolateSpectral(d.value / nodes[0].value))
+                .transition().duration(800)
+                .attr('r', (d) => d.r)
+            )
 
-        const xScale = d3.scaleLinear()
-            .domain([0, d3.max(stakeBlocksMinted)]) // or blocks minted / expected?
-            .range([100, width - 100])
-
-        const yScale = d3.scaleLinear()
-            .domain([0, d3.max(stakeActiveDelegators)])
-            .range([100, height - 100])
-
-        const fillColor = d3.scaleLinear()
-            .domain([0, d3.max(stakeSaturation)])
-            .range(['yellow', 'red'])
-            .unknown('#ccc')
-
-        //strokecolor and stroke width scale?
-
-        // Add bubbles
-        svg.selectAll('circle')
-            .data(poolData)
-            .enter()
-            .append('circle')
-            .attr('cx', d => xScale(d.blocks_minted))
-            .attr('cy', d => yScale(d.live_delegators))
-            .attr('r', d => radiusScale(d.active_stake))
-            .attr('fill', d => fillColor(d.live_saturation))
-            .attr('stroke', 'white')
-            .attr('stroke-width', 2)
-
-        // Text for each bubble
-        svg.selectAll('text')
-            .data(poolData)
-            .enter()
-            .append('text')
-            .text(d => `Name: ${d.metadata.name}, Stake: ${d.active_stake}, Blocks minted: ${d.blocks_minted}, \n
-                Active delegators: ${d.live_delegators}, Saturation: ${d.live_saturation}`)
-            .attr('x', d => xScale(d.blocks_minted))
-            .attr('y', d =>  yScale(d.live_delegators) + radiusScale(d.active_stake)) // add radius and stroke width to display text below circle
+        const labels = g
+            .selectAll('text')
+            .data(nodes)
+            .join('text')
+            .attr('x', (d) => d.x)
+            .attr('y', (d) => d.y)
             .attr('font-size', '15px')
             .attr('text-anchor', 'middle')
             .attr('alignment-baseline', 'before-edge')
             .attr('fill', '#fff')
             .style('pointer-events', 'none')
-    }, [poolData])
-        
-        
+            .text((d) => d.data.pool_id)
+     }, [poolData])
 
         /* TODO:
             1. Nearing 1 saturation as red and above 1 as another color?
@@ -114,27 +71,7 @@ export default function CircularPacking ({ totalStake })
             5. Try with example JSON from actual node (check how to extract json from psql)
         */ 
 
-        //const nodes = 
-        
-
-        // d3.forceSimulation(data)
-        //     .force('center', d3.forceCenter(width / 2, height / 2))
-        //     .force('charge', d3.forceManyBody().strength(10))
-        //     .force('collision', d3.forceCollide().radius(d => radiusScale(d.active_stake) + 4))
-        //     .on('tick', () => {
-        //         nodes
-        //             .attr('cx', d => d.x)
-        //             .attr('cy', d => d.y);
-
-        //         labels
-        //             .attr('x', d => d.x)
-        //             .attr('y', d => d.y + 4); // vertically center text in circle
-        //     });
-
     return (
-        <div className="bubble-map">
-            {/* <p>{JSON.stringify(poolData)}</p> */}
-            <svg ref={svgReference}></svg>
-        </div>
+        <svg ref={svgReference} width={width} height={height}></svg>
     )
  }

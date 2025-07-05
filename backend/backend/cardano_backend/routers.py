@@ -18,7 +18,7 @@ class CardanoDBRouter:
     def allow_migrations(self, db, app_label, model_name=None, **hints):
         if app_label in self.route_app_labels:
             return False
-        return db == "default"
+        return db == 'default'
     
     ## TODO: def allow_relation
 

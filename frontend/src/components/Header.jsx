@@ -1,8 +1,11 @@
 export default function Header() {
     return (
-        <header style={{height: '10vh', width: '100vw', display: 'flex', flexDirection: 'column'}}>
-            <h1>Cardano dashboard</h1>
-        </header>
+        <div className="flex flex-col h-screen w-screen">
+            <header className="h-[10vh] w-full bg-blue-500 flex items-center justify-center text-white text-2xl">
+                <h1>Cardano dashboard</h1>
+            </header>
+        </div>
+        
         // Tailwind Header
 //         <header class="bg-white">
 //   <nav class="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8" aria-label="Global">
