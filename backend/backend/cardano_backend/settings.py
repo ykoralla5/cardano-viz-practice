@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 import logging
 from dotenv import load_dotenv
-from logging.handlers import RotatingFileHandler
+from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 from pathlib import Path
 from decouple import config
 
@@ -22,7 +22,10 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-BLOCKFROST_API_KEY = config('BLOCKFROST_API_KEY')
+# Define log directory inside BASE_DIR. Create if does not exist yet
+LOG_DIR = os.path.join(BASE_DIR, 'log')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
 
 # Quick-start development settings - unsuitable for production
@@ -50,7 +53,7 @@ INSTALLED_APPS = [
     'api',
     'corsheaders',
     'rest_framework',
-    #'debug_toolbar'
+    'debug_toolbar'
 ]
 
 MIDDLEWARE = [
@@ -59,7 +62,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    #'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware'
@@ -166,20 +169,56 @@ CORS_ALLOW_ALL_ORIGINS = True # Keep for development only
 # CORS_ALLOW_CREDENTIALS = True
 
 LOGGING = {
-    "version" : 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "file": {
-            "level": "INFO",
-            "class": "logging.FileHandler",
-            "filename": "/home/matija/cardano-viz-practice/backend/backend/log/debug.log"
+    'version' : 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'daily_formatter': {
+            'format': '{asctime} {module} {levelname} - {message}', # Output like ERROR - Epoch number should be string
+            'style': '{'
+        },
+        'error_formatter': {
+            'format': '{asctime} {module} - {message}', # Output like ERROR - Epoch number should be string
+            'style': '{'
+        }
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'daily_formatter'
+        },
+        # Handler for daily logs
+        'daily_file_handler': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'djang_daily.log'),
+            'when': 'midnight', # Rotate at midnight every day
+            'interval': 1, # Rotate every 1 day
+            'backupCount': 10, # Keep 10 days of backup logs
+            'formatter': 'daily_formatter',
+            'encoding': 'utf8'
+        },
+        # Handler for errors only
+        'error_file_handler': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'djang_error.log'),
+            'maxBytes': 1024 * 1024 * 5, # 5 MB
+            'backupCount': 5, # Keep 5 days of backup logs,
+            'level': 'ERROR',
+            'formatter': 'error_formatter',
+            'encoding': 'utf8'
         },
     },
-    "loggers": {
-        "django": {
-            "handlers": ["file"],
-            "level": "INFO",
-            "propagate": True,
+    'loggers': {
+        # Root logger
+        'django': {
+            'handlers': ['daily_file_handler', 'error_file_handler'],
+            'level': 'INFO',
+            'propagate': True,
         },
+        # To show SQL queries
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False
+        }
     },
 }

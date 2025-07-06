@@ -12,35 +12,35 @@ logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
 def get_delegators(request):
-    epoch_qs = models.EpochStake.objects
+    
+    
     epoch_param = request.GET.get('epoch')
     
     # If request includes epoch number, use it otherwise get most recent epoch
     if epoch_param:
         try:
-            epoch_no = int(epoch_param)
+            epoch_number = int(epoch_param)
         except ValueError:
             return JsonResponse({'Error': 'Epoch number must be an integer'}, status=404)
     else:
-        epoch_no = models.EpochStake.objects.aggregate(max_epoch=Max("epoch_no"))["max_epoch"]
-        if epoch_no is None:
+        epoch_number = models.EpochStake.objects.aggregate(max_epoch=Max("epoch_no"))["max_epoch"]
+        if epoch_number is None:
             return JsonResponse({'Error': 'No epoch stake data found'}, status=404)
         
-    # Get delegators and the amount delegated by pool
-    delegators = (
-        epoch_qs
-            .filter(epoch_no=epoch_no)
-            .order_by('-amount')
-            #.values('addr_id','pool_id','amount')
-            
-    )
+    # Get 10 distinct pools
+    pools = models.EpochStake.objects.filter(epoch_no=epoch_number).order_by('pool_id').values_list('pool_id', flat=True).distinct()[:10]
+    #print(f'Pools are {pools}')
 
-    # Limit to 100 rows
-    logger.info(delegators.count)
-    delegators = delegators[:100]
-
+    # Get all delegators from the 10 distinct pools in epoch_no
+    delegators = models.EpochStake.objects.filter(epoch_no=epoch_number, pool_id__in=pools).values('addr_id','pool_id','amount','epoch_no')
+    #print(f'There are {len(delegators)} delegators to {len(pools)} pools. Pools is of type {type(pools)} and delegators is of type {type(delegators)}.')
+    
+    
+    #counts = 
     if not delegators:
-        return JsonResponse({'Error': f'No data found for epoch {epoch_no}'}, status=404)
+        return JsonResponse({'Error': f'No data found for epoch {epoch_number}'}, status=404)
+    
+
     
     # for delegator in delegators:
     #     print(delegator)
@@ -49,6 +49,8 @@ def get_delegators(request):
     #     delegator.setdefault(pool, []).append(addr)
 
     serializer = serializers.EpochStakeSerializer(delegators, many=True)
+    delegators_list = list(serializer.data)
+    print(delegators_list[0]['amount'])
     logger.info(type(serializer.data))
     return Response(serializer.data)
 

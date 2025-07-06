@@ -24,15 +24,15 @@ export default function Main() {
                 console.error(err)
                 setLoading(false)
             })
-        }, []);
+        }, [])
 
     if (!poolData.length) {
-        return <div>Loading pools...</div>
+        return <div className="text-gray-500 dark:text-white">Loading pools...</div>
     }
 
     return(
-        <main className="flex-grow w-full bg-gray-100 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
-            <section id="d3-chart-container" className="w-full h-full">
+        <main className="flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
+            <section id="d3-chart-container" className="w-full">
                 <BubbleMap poolData={poolData}/>
             </section>
         </main>

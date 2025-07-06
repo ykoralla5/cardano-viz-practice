@@ -19,6 +19,7 @@ export default function BubbleMap({ poolData })
 
     useEffect(() => {
         getContainerDimensions() // Set initial dimensions
+        console.log(dimensions)
 
         const handleResize = () => {
 
@@ -32,7 +33,7 @@ export default function BubbleMap({ poolData })
 
         const debouncedResize = handleResize()
         window.addEventListener('resize', debouncedResize)
-        console.log(dimensions)
+        
 
         return () => {
             window.removeEventListener('resize', debouncedResize)
@@ -42,8 +43,11 @@ export default function BubbleMap({ poolData })
         <div ref={containerRef} className="w-full h-full flex items-center justify-center">
             <CircularPacking 
                 poolData={poolData}
-                width={dimensions.width}
-                height={dimensions.height}/>
+                //width={dimensions.width}
+                // height={dimensions.height}
+                width = {window.innerWidth}
+                height={window.innerHeight}
+                />
         </div>
         
     )
