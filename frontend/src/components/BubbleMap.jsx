@@ -1,7 +1,7 @@
 import { Children, useCallback, useEffect, useRef, useState } from "react"
 import CircularPacking from "./CirclePacking"
 
-/* Direct container of the bubble map. Used to handle dimensions */
+/* Direct container of the bubble map. Used to handle dimensions*/
 export default function BubbleMap({ poolData }) 
 {
     const containerRef = useRef(null)
@@ -19,7 +19,7 @@ export default function BubbleMap({ poolData })
 
     useEffect(() => {
         getContainerDimensions() // Set initial dimensions
-        console.log(dimensions)
+        //console.log(dimensions)
 
         const handleResize = () => {
 

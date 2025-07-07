@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { Children, useEffect, useRef, useState } from 'react'
+import { Children, useEffect, useRef, useState, useMemo } from 'react'
 
 /* Generate bubble map */
 export default function CircularPacking ({ poolData, width, height })
@@ -16,19 +16,50 @@ export default function CircularPacking ({ poolData, width, height })
 
         const margin = 20
 
+        // Group pools by pool id
+        //const groupByPool = d3.group(poolData, d => d.pool_id)
+
+        
+        
+        // Reconstruct object to contain only stake address and amount grouped by pool and epoch
+        const addrByPoolsData = {
+            name: 'all-pools',
+            children: Array.from(poolData, ([epoch, poolMap]) => ({
+                name: `epoch_${epoch}`,
+                children: Array.from(poolMap,([pool, rows]) => ({
+                    name: `pool_${pool}`,
+                    children: rows.map(r => ({
+                        name: `addr_${r.addr_id}`,
+                        value: r.amount
+                    }))
+                }))
+            }))
+    }
+
+    console.log(addrByPoolsData)
+        //console.log(groupByPool)
+        //console.log(addrByPoolsData)
+        //console.log(typeof(groupByPool),typeof(addrByPoolsData))
+
         const root = d3
-            .hierarchy({children: poolData})
-            .sum((d) => d.amount)
+            .hierarchy(addrByPoolsData)
+            .sum((d) => d.value)
             .sort((a, b) => b.value - a.value)
 
-        const pack = d3.pack().size([width - margin * 2, height - margin * 2])
+        // Make area of circle equal to value. This gives every pool coordinates (x,y) and a radius
+        const pack = d3.pack()
+            .size([width - margin * 2, height - margin * 2])
             .padding(4) // Padding between pool bubbles
 
-        const nodes = pack(root).leaves()
+        const nodes = pack(root).descendants().slice(1)
+        //.leaves()
 
-        const poolIds = Array.from(new Set(poolData.map(d => d.pool_id))) // unique pool_ids
-        console.log(poolIds)
-
+        const depthCounts = d3.rollup(
+            poolData,            // every node, incl. root
+            v => v.length,                 // reducer → how many in this group?
+            d => d.depth                   // key → depth level
+        );
+        console.log(depthCounts)
         const svg = d3.select(svgReference.current)
 
         svg.selectAll('*').remove // Clear previous svg renders
@@ -45,11 +76,13 @@ export default function CircularPacking ({ poolData, width, height })
                 .append('circle')
                 .attr('cx', (d) => d.x)
                 .attr('cy', (d) => d.y)
-                .attr('r', 0)
+                .attr('r', (d) => d.r)
                 .style('opacity', 0.8)
                 .style('fill', (d) => d3.interpolateSpectral(d.value / nodes[0].value))
+                .attr('stroke', (d) => d.depth === 1 ? 'white' : 'none') 
+                .attr('stroke-width', d => d.depth === 1 ? 2 : 0)
                 .transition().duration(800)
-                .attr('r', (d) => d.r)
+                //.attr('r', (d) => d.r)
             )
 
         const labels = g
@@ -58,21 +91,18 @@ export default function CircularPacking ({ poolData, width, height })
             .join('text')
             .attr('x', (d) => d.x)
             .attr('y', (d) => d.y)
-            .attr('font-size', '10px')
+            .attr('font-size', '15px')
             .attr('text-anchor', 'middle')
             .attr('alignment-baseline', 'before-edge')
             .attr('fill', '#fff')
             .style('pointer-events', 'none')
-            .text((d) => d.data.amount)
+            .text((d) => d.amount)
      }, [poolData])
 
         /* TODO:
-            1. Why is svg showing as bubble?
-            2. show 2 levels of bubbles: 1. pools and 2. delegators
-            3. choose delegators owning top 50% of stake of pool. Filter this on frontend or backend? 
-            4. Get such data from 2 epochs and show delegation changes using arrows
-            5. remove scrollbars
-            6. tooltip to show data
+            1. show delegation changes using arrows
+            2. remove scrollbars
+            3. tooltip to show data
         */ 
 
     return (
