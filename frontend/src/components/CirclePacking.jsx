@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { Children, useEffect, useRef, useState, useMemo } from 'react'
 
 /* Generate bubble map */
-export default function CircularPacking ({ poolData, width, height })
+export default function CircularPacking ({ poolData, width, height, selectedEpoch })
  {
     
     const svgReference = useRef(null)
@@ -12,37 +12,14 @@ export default function CircularPacking ({ poolData, width, height })
     const color = d3.scaleOrdinal(d3.schemeCategory10)
 
     useEffect(() => {
-        if (poolData.length === 0) return
+        if (poolData.size === 0) 
+            
+        console.log(poolData)
 
         const margin = 20
 
-        // Group pools by pool id
-        //const groupByPool = d3.group(poolData, d => d.pool_id)
-
-        
-        
-        // Reconstruct object to contain only stake address and amount grouped by pool and epoch
-        const addrByPoolsData = {
-            name: 'all-pools',
-            children: Array.from(poolData, ([epoch, poolMap]) => ({
-                name: `epoch_${epoch}`,
-                children: Array.from(poolMap,([pool, rows]) => ({
-                    name: `pool_${pool}`,
-                    children: rows.map(r => ({
-                        name: `addr_${r.addr_id}`,
-                        value: r.amount
-                    }))
-                }))
-            }))
-    }
-
-    console.log(addrByPoolsData)
-        //console.log(groupByPool)
-        //console.log(addrByPoolsData)
-        //console.log(typeof(groupByPool),typeof(addrByPoolsData))
-
         const root = d3
-            .hierarchy(addrByPoolsData)
+            .hierarchy(poolData)
             .sum((d) => d.value)
             .sort((a, b) => b.value - a.value)
 
@@ -54,12 +31,12 @@ export default function CircularPacking ({ poolData, width, height })
         const nodes = pack(root).descendants().slice(1)
         //.leaves()
 
-        const depthCounts = d3.rollup(
-            poolData,            // every node, incl. root
-            v => v.length,                 // reducer → how many in this group?
-            d => d.depth                   // key → depth level
-        );
-        console.log(depthCounts)
+        // const depthCounts = d3.rollup(
+        //     poolData,            // every node, incl. root
+        //     v => v.length,                 // reducer → how many in this group?
+        //     d => d.depth                   // key → depth level
+        // );
+        // console.log(depthCounts)
         const svg = d3.select(svgReference.current)
 
         svg.selectAll('*').remove // Clear previous svg renders
@@ -106,6 +83,10 @@ export default function CircularPacking ({ poolData, width, height })
         */ 
 
     return (
-        <svg ref={svgReference} width={width} height={height}></svg>
+        <>
+            <h4 className="self-center dark:text-white">{selectedEpoch}</h4>
+            <svg ref={svgReference} width={width} height={height}></svg>
+        </>
+        
     )
  }

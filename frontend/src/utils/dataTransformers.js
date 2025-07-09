@@ -1,0 +1,60 @@
+import * as d3 from 'd3'
+
+// Reconstruct and filter api call data - Keep stake holders holding top x% of pool stake
+export function getStructuredData(apiData, stakeThreshold)
+    {
+        if (!apiData) return {} // In case poolData is not fetched and stored yet
+
+        // Group by epoch and pool
+        const groupByEpochPool = d3.group( // returns type InternMap
+            apiData,
+            d => d.epoch_no,
+            d => d.pool_id)
+
+        // Keep data according to stake threshold (type object)
+        var filteredGroupByEpochPool = Array.from(groupByEpochPool, ([epoch, poolMap]) => [
+                epoch,
+                new Map(
+                    Array.from(poolMap, ([pool, rows]) => {
+                    //console.log(Object.values(rows))
+                    const sorted = rows.slice().sort((a,b) => b.amount - a.amount)
+                    //console.log(sorted)
+                    const total = d3.sum(sorted, d => d.amount)
+                    const cum = d3.cumsum(sorted, d => d.amount)
+                
+                    const cut = cum.findIndex(v => v >= stakeThreshold * total)
+                
+                    return [pool, sorted.slice(0, cut + 1)]
+                    })
+                )
+            ]
+        )        
+    return filteredGroupByEpochPool
+    }
+
+export function findEpochByKeyInMap(map, epochNumber) {
+    for (const [epochKey, epochValue] of map.entries()) {
+        if (epochValue[0] === epochNumber) { // Since index 0 contains epoch_no
+            return epochKey // Return the epoch number if it matches the targetValue
+        }
+    }
+    return undefined // Or null, or -1, if not found
+}
+
+export function transformToD3Hierarchy(structuredData) {
+    const index = 1 // since index 0 contains just epoch_no and index contains pool and address data
+    if (!structuredData[index]) return null
+
+    // Reconstruct into name children structure for usability in d3
+    const d3DataForSelectedEpoch = {
+            children: Array.from(structuredData[index],([pool, rows]) => ({
+                name: `pool_${pool}`,
+                children: rows.map(r => ({
+                    name: `addr_${r.addr_id}`,
+                    value: r.amount
+                }))
+            }))
+    }
+    //console.log(d3DataForSelectedEpoch)
+    return d3DataForSelectedEpoch
+}

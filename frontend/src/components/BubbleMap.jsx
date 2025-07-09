@@ -1,8 +1,8 @@
-import { Children, useCallback, useEffect, useRef, useState } from "react"
+import { Children, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import CircularPacking from "./CirclePacking"
 
-/* Direct container of the bubble map. Used to handle dimensions*/
-export default function BubbleMap({ poolData }) 
+/* Direct container of the bubble map */
+export default function BubbleMap({ poolData, selectedEpoch }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: 0, height: 0})
@@ -14,12 +14,10 @@ export default function BubbleMap({ poolData })
                 height: containerRef.current.clientHeight
             })
         }
-        //console.log(containerRef.current.clientWidth,containerRef.current.clientHeight)
     }, [])
 
     useEffect(() => {
         getContainerDimensions() // Set initial dimensions
-        //console.log(dimensions)
 
         const handleResize = () => {
 
@@ -34,21 +32,20 @@ export default function BubbleMap({ poolData })
         const debouncedResize = handleResize()
         window.addEventListener('resize', debouncedResize)
         
-
         return () => {
             window.removeEventListener('resize', debouncedResize)
         }
     }, [getContainerDimensions]) // run everytime container dimensions change
     return (
-        <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+        <div ref={containerRef} className="w-full h-full flex-column items-center justify-center">
             <CircularPacking 
                 poolData={poolData}
+                selectedEpoch={selectedEpoch}
                 //width={dimensions.width}
                 // height={dimensions.height}
                 width = {window.innerWidth}
                 height={window.innerHeight}
                 />
         </div>
-        
     )
 }
