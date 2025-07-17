@@ -28,10 +28,10 @@ def get_delegators(request):
             return JsonResponse({'Error': 'No epoch stake data found'}, status=404)
         
     # Get 10 distinct pools
-    pools = models.EpochStake.objects.filter(epoch_no=epoch_number).order_by('pool_id').values_list('pool_id', flat=True).distinct()[:10]
+    pools = models.EpochStake.objects.filter(epoch_no=epoch_number).order_by('pool_id').values_list('pool_id', flat=True).distinct()[:100]
     #print(f'Pools are {pools}')
 
-    # Get all delegators from the 10 distinct pools in epoch_no
+    # Get all delegators from the 100 distinct pools in epoch_no
     delegators = models.EpochStake.objects.filter(epoch_no=epoch_number, pool_id__in=pools).values('addr_id','pool_id','amount','epoch_no')
     #print(f'There are {len(delegators)} delegators to {len(pools)} pools. Pools is of type {type(pools)} and delegators is of type {type(delegators)}.')
     
@@ -50,7 +50,7 @@ def get_delegators(request):
 
     serializer = serializers.EpochStakeSerializer(delegators, many=True)
     delegators_list = list(serializer.data)
-    print(delegators_list[0]['amount'])
+    #print(delegators_list[0]['amount'])
     logger.info(type(serializer.data))
     return Response(serializer.data)
 

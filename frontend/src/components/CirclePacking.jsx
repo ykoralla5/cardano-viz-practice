@@ -12,16 +12,26 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
     const color = d3.scaleOrdinal(d3.schemeCategory10)
 
     useEffect(() => {
-        if (poolData.size === 0) 
-            
-        console.log(poolData)
+        if (poolData.size === 0) return
 
         const margin = 20
 
+        //console.log(poolData.children)
+
         const root = d3
-            .hierarchy(poolData)
+            .hierarchy(poolData) // generates data, parent, children, depth
             .sum((d) => d.value)
-            .sort((a, b) => b.value - a.value)
+            .sort((a, b) => {
+                const valueDiff = b.value - a.value
+                if (valueDiff !== 0) return valueDiff
+                const addr_regex = /addr_(\d+)/
+                const pool_regex = /pool_(\d+)/
+                //console.log(a.data.name.match(regex)[1])
+                if (a.depth === 1) { // These are pool nodes
+                    console.log(`Comparing Pools: ${a.data.pool_id} (value: ${a.value}) vs ${b.data.pool_id} (value: ${b.value})`)}
+
+                return d3.ascending(a.data.name, b.data.name)
+            })
 
         // Make area of circle equal to value. This gives every pool coordinates (x,y) and a radius
         const pack = d3.pack()
@@ -39,7 +49,7 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
         // console.log(depthCounts)
         const svg = d3.select(svgReference.current)
 
-        svg.selectAll('*').remove // Clear previous svg renders
+        svg.selectAll('*').remove() // Clear previous svg renders
 
         const g = svg
             .append('g')
@@ -55,7 +65,8 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
                 .attr('cy', (d) => d.y)
                 .attr('r', (d) => d.r)
                 .style('opacity', 0.8)
-                .style('fill', (d) => d3.interpolateSpectral(d.value / nodes[0].value))
+                // different color schemes for pools and delegators
+                .style('fill', (d) => d.depth === 2 ? d3.interpolateSpectral(d.value / nodes[0].value) : color(d))
                 .attr('stroke', (d) => d.depth === 1 ? 'white' : 'none') 
                 .attr('stroke-width', d => d.depth === 1 ? 2 : 0)
                 .transition().duration(800)
@@ -74,7 +85,7 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
             .attr('fill', '#fff')
             .style('pointer-events', 'none')
             .text((d) => d.amount)
-     }, [poolData])
+     }, [poolData, width, height])
 
         /* TODO:
             1. show delegation changes using arrows
@@ -83,10 +94,10 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
         */ 
 
     return (
-        <>
-            <h4 className="self-center dark:text-white">{selectedEpoch}</h4>
+        <div>
+            <h4 className="justify-center dark:text-white">{selectedEpoch}</h4>
             <svg ref={svgReference} width={width} height={height}></svg>
-        </>
+        </div>
         
     )
  }

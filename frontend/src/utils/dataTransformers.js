@@ -10,6 +10,8 @@ export function getStructuredData(apiData, stakeThreshold)
             apiData,
             d => d.epoch_no,
             d => d.pool_id)
+    
+        //console.log(groupByEpochPool)
 
         // Keep data according to stake threshold (type object)
         var filteredGroupByEpochPool = Array.from(groupByEpochPool, ([epoch, poolMap]) => [
@@ -22,13 +24,14 @@ export function getStructuredData(apiData, stakeThreshold)
                     const total = d3.sum(sorted, d => d.amount)
                     const cum = d3.cumsum(sorted, d => d.amount)
                 
+                    // Find index where stake threshold is met and then keep part till the index
                     const cut = cum.findIndex(v => v >= stakeThreshold * total)
-                
                     return [pool, sorted.slice(0, cut + 1)]
                     })
                 )
             ]
-        )        
+        )
+        //console.log(filteredGroupByEpochPool)
     return filteredGroupByEpochPool
     }
 
@@ -42,15 +45,16 @@ export function findEpochByKeyInMap(map, epochNumber) {
 }
 
 export function transformToD3Hierarchy(structuredData) {
+    //console.log(structuredData)
     const index = 1 // since index 0 contains just epoch_no and index contains pool and address data
     if (!structuredData[index]) return null
 
     // Reconstruct into name children structure for usability in d3
     const d3DataForSelectedEpoch = {
-            children: Array.from(structuredData[index],([pool, rows]) => ({
-                name: `pool_${pool}`,
+            children: Array.from(structuredData[index],([pool, rows]) => ({ // root
+                name: `pool_${pool}`, // depth 1
                 children: rows.map(r => ({
-                    name: `addr_${r.addr_id}`,
+                    name: `addr_${r.addr_id}`, // depth 2
                     value: r.amount
                 }))
             }))

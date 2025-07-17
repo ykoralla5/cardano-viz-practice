@@ -9,46 +9,60 @@ import { getStructuredData, transformToD3Hierarchy, findEpochByKeyInMap } from '
 export default function Main() {
     // State values
     const [rawData, setRawData] = useState(null)
-    const [selectedEpoch, setSelectedEpoch] = useState(560)
+    const [selectedEpoch, setSelectedEpoch] = useState(559)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [stakeChanges, setStakeChanges] = useState({})
+    const [stakeThreshold, setStakeThreshold] = useState(0.5)
+    //const [stakeChanges, setStakeChanges] = useState({})
 
     // Static values
-    const stakeThreshold = 0.5 // Stake addresses owning 50% of total stake of pool
-
+    
     // Derived values
     // Reconstruct and filter api call data - Keep stake holders holding top x% of pool stake
-        const structuredData = useMemo(() => {
-            if (!rawData) return [] // In case poolData is not fetched and stored yet
-            return getStructuredData(rawData, stakeThreshold)
-        }, [rawData])
-        
-        // Get index in array where data on selected epoch is present
-        const epochIndex = findEpochByKeyInMap(structuredData, selectedEpoch)
-        
-        const d3DataForSelectedEpoch = useMemo(() => {
-            if (!rawData) return [] // In case poolData is not fetched and stored yet
-            return transformToD3Hierarchy(structuredData[epochIndex])
-        }, [rawData])
+    const structuredData = useMemo(() => {
+        if (!rawData) return [] // In case poolData is not fetched and stored yet
+        const data = getStructuredData(rawData, stakeThreshold)
+        return data
+    }, [rawData, stakeThreshold, selectedEpoch])
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setIsLoading(true)
-                // Make API call
-                const response = await fetchPools()
-                setRawData(response)
+    //console.log(structuredData)
+    
+    // Get index in array where data on selected epoch is present
+    const epochIndex = findEpochByKeyInMap(structuredData, selectedEpoch)
+    
+    const d3DataForSelectedEpoch = useMemo(() => {
+        if (!rawData) return [] // In case poolData is not fetched and stored yet
+        if (!structuredData) console.error("No structured data")
+        return transformToD3Hierarchy(structuredData[epochIndex])
+    }, [rawData, stakeThreshold, selectedEpoch])
+
+
+    async function fetchData() {
+        try {
+            setIsLoading(true)
+            // Make API call
+            const response = await fetchPools(selectedEpoch)
+            //console.log(response)
+            setRawData(response)
             }
-            catch (err) {
-                setError(err)
+        catch (err) {
+            setError(err)
             }
-            finally {
-                setIsLoading(false)
-            }
+        finally {
+            setIsLoading(false)
         }
+    }
+
+    // Fetch data based on the changes in input
+    useEffect(() => {
         fetchData()
-    }, [])
+    }, [selectedEpoch, stakeThreshold])
+
+    // Form handler
+    const handleSubmit = e => {
+        e.preventDefault()
+        fetchData()
+    }
 
     if (isLoading) {
         return <div className="text-gray-500 dark:text-white">Loading pools...</div>
@@ -60,16 +74,37 @@ export default function Main() {
 
     return(
         <main className="flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
-            <section id="d3-chart-container" className="w-full">
+            <section id="d3-chart-container" className="w-full flex flex-col items-center">
                 <BubbleMap poolData={d3DataForSelectedEpoch} selectedEpoch={selectedEpoch} stakeThreshold={stakeThreshold} />
-                <div className="max-w-screen-xl flex gap-10 justify-center">
-                    <input
-                    id="epoch-slider"
-                    type="range"
-                    min="559" max="560" step="1"
-                    value={selectedEpoch}
-                    onChange={(e) => {setSelectedEpoch(+e.target.value)}}/>
-                    <h4 className="self-center dark:text-white">{selectedEpoch}</h4>
+                <div className="w-5xs flex flex-col justify-center">
+                    <form onSubmit={handleSubmit}>
+                        <div className="flex flex-col justify-center">
+                            <label htmlFor="epoch-slider" className="self-center dark:text-white">Epoch number:</label>
+                            <h4 className="self-center dark:text-white">{selectedEpoch}</h4>
+                            <input
+                            id="epoch-slider"
+                            type="range"
+                            min="559" max="560" step="1"
+                            value={selectedEpoch}
+                            onChange={(e) => {
+                                setSelectedEpoch(parseInt(e.target.value))
+                                }}/>
+                        </div>
+                        <div className="flex flex-col justify-center">
+                            <label htmlFor="stake-threshold-slider" className="self-center dark:text-white">Stake threshold:</label>
+                            <h4 className="self-center dark:text-white">{stakeThreshold*100}</h4>
+                            <input
+                            id="stake-threshold-slider"
+                            type="range"
+                            min="25" max="100" step="25"
+                            value={stakeThreshold*100} // show value of input as percentage instead of decimals
+                            onChange={(e) => {
+                                // Set stake threshold in decimals instead of percentage
+                                setStakeThreshold(parseInt(e.target.value)/100)
+                                }}/>
+                        </div>
+                        
+                    </form>
                 </div>
             </section>
         </main>
