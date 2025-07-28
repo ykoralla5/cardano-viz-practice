@@ -45,20 +45,38 @@ export function findEpochByKeyInMap(map, epochNumber) {
 }
 
 export function transformToD3Hierarchy(structuredData) {
-    //console.log(structuredData)
     const index = 1 // since index 0 contains just epoch_no and index contains pool and address data
     if (!structuredData[index]) return null
 
     // Reconstruct into name children structure for usability in d3
     const d3DataForSelectedEpoch = {
             children: Array.from(structuredData[index],([pool, rows]) => ({ // root
-                name: `pool_${pool}`, // depth 1
-                children: rows.map(r => ({
-                    name: `addr_${r.addr_id}`, // depth 2
-                    value: r.amount
+                name: pool, //`pool_${pool}`, // depth 1
+                children: rows.map(delegator => ({
+                    name: delegator.addr_id, //`addr_${r.addr_id}`, // depth 2
+                    value: delegator.amount,
+                    //amount: r.amount
                 }))
             }))
     }
     //console.log(d3DataForSelectedEpoch)
     return d3DataForSelectedEpoch
 }
+
+export function createDelegatorPoolMap(epochData) {
+    const delegatorToPoolMap = new Map() // Map<delegatorName, poolName>
+    if (!epochData || !epochData.children) {
+        //console.error("No data")
+        return delegatorToPoolMap
+    }
+
+    epochData.children.forEach(pool => {
+        if (pool.children) {
+            pool.children.forEach(delegator => {
+                delegatorToPoolMap.set(delegator.name, pool.name)
+            });
+        }
+    })
+    return delegatorToPoolMap
+}
+

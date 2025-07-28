@@ -2,7 +2,7 @@ import { Children, useCallback, useEffect, useRef, useState, useMemo } from "rea
 import CircularPacking from "./CirclePacking"
 
 /* Direct container of the bubble map */
-export default function BubbleMap({ poolData, selectedEpoch }) 
+export default function BubbleMap({ poolData, selectedEpoch, flowLinks }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: 0, height: 0})
@@ -18,6 +18,7 @@ export default function BubbleMap({ poolData, selectedEpoch })
 
     useEffect(() => {
         getContainerDimensions() // Set initial dimensions
+
 
         const handleResize = () => {
 
@@ -45,6 +46,7 @@ export default function BubbleMap({ poolData, selectedEpoch })
                 // height={dimensions.height}
                 width = {window.innerWidth}
                 height={window.innerHeight}
+                flowLinks = {flowLinks}
                 />
         </div>
     )
