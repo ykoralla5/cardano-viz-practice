@@ -1,4 +1,4 @@
-import exampleData from '../data.json'
+import exampleData from '../example-data/data.json'
 
 export async function fetchPools(epoch_no, stake_threshold) {
     // Actual API call to backend

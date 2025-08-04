@@ -4,15 +4,16 @@ import { Link } from 'react-router-dom'
 
 const navigation = [
     { name: 'Home', href: '/Home'},
-    { name: 'Bubble Map with Arrows', href: '/bm-arrow' },
-    { name: 'Bubble Map without Arrows', href: '/bm-no-arrow' }
+    { name: 'P&D with Arrows', href: '/bm-arrow' },
+    { name: 'P&D without Arrows', href: '/bm-no-arrow' },
+    { name: 'Pool performance', href: '/pool-performance'}
 ]
 
 export default function Header() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     
     return (
-        <nav className="bg-white border-gray-200 dark:bg-gray-900">
+        <nav className="h-[10vh] bg-white border-gray-200 dark:bg-gray-900">
             <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4">
                 <a href="#" className="flex items-center space-x-3 rtl:space-x-reverse">
                     <img src={logo} className="h-8" alt="Cardano Logo" />

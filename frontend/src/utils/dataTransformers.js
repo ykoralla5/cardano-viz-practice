@@ -80,3 +80,25 @@ export function createDelegatorPoolMap(epochData) {
     return delegatorToPoolMap
 }
 
+export function getStructuredPoolPerfData(apiData, epochNumber) {
+    if (!apiData) return {} // In case poolData is not fetched and stored yet
+
+    // Get pool performance data for selected epoch
+    const selectedEpochData = apiData[0][epochNumber] || [];
+
+    // Reconstruct into name children structure for usability in d3
+    const d3DataForSelectedEpoch = {
+            name: 'all-pools',
+            children: selectedEpochData.map(d => ({ // root
+                name: d.pool_id, // depth 2
+                value: d.pool_stake,
+                saturation_percent: d.saturation_percent,
+                actual_block_count: d.actual_block_count,
+                expected_block_count: d.expected_block_count
+            }))
+        }
+
+    console.log(d3DataForSelectedEpoch)
+    return d3DataForSelectedEpoch
+}
+

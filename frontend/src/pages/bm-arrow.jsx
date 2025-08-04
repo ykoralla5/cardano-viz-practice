@@ -1,17 +1,3 @@
-// import Header from '../components/Header'
-// import Main from "../components/Main"
-
-// /* Direct container of the bubble map */
-// export default function BubbleMapArrow() 
-// {
-//     return (
-//         <div>
-//             <Header />
-//             <Main/>
-//         </div>
-//     )
-// }
-
 import * as d3 from 'd3'
 import { Children, useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { clsx } from 'clsx'
@@ -184,7 +170,7 @@ export default function BubbleMapArrow() {
     return(
         <main className="flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
-                <BubbleMap poolData={d3DataForSelectedEpoch} selectedEpoch={selectedEpoch} stakeThreshold={stakeThreshold} flowLinks={flowLinks}/>
+                <BubbleMap poolData={d3DataForSelectedEpoch} selectedEpoch={selectedEpoch} stakeThreshold={stakeThreshold} flowLinks={flowLinks}  poolPerf={false}/>
                 <div className="w-5xs flex flex-col justify-center">
                     <form onSubmit={handleSubmit}>
                         <div className="flex flex-col justify-center">

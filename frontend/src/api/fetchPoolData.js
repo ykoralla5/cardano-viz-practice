@@ -1,10 +1,14 @@
-export const fetchPoolData = async (address) => {
-    const response = await fetch(`https://cardano-mainnet.blockfrost.io/api/v0/pools/${address}`, {
-        headers: {project_id:import.meta.env.VITE_BLOCKFROST_PROJECT_ID}
-    })
-    if (!response.ok) {
-        throw new Error("Failed to fetch pool data")
-    }
+import poolPerfData from '../example-data/data-pool-performance.json'
 
-    return response.json()
+export async function fetchPoolPerformanceData(epoch_no) {
+    // // Actual API call to backend
+    // const response = await fetch(`http://localhost:8000/api/snapshot/pools/performance?epoch=${epoch_no}`)
+    // if (!response.ok) {
+    //     throw new Error(`${response.status} Failed to fetch pool performance data for epoch ${epoch_no}`)
+    // }
+    // const data = await response.json()
+
+    // Example data
+    const data = poolPerfData
+    return data
 }

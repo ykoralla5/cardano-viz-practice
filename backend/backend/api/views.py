@@ -2,8 +2,9 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from django.db.models import Max, Window, Sum, OuterRef, Subquery, DecimalField, F, Count
+from django.db.models import Max, Window, Sum, OuterRef, Subquery, DecimalField, F, Count, Q
 from decimal import Decimal
+from collections import defaultdict
 from . import models
 from . import serializers
 from . import utils
@@ -16,7 +17,6 @@ logger = logging.getLogger(__name__)
 @api_view(['GET'])
 def get_delegators(request):
     start_time = time.time()
-    
 
     epoch_param = request.GET.get('epoch')
     stake_threshold_param = request.GET.get('stake_threshold')
@@ -112,8 +112,6 @@ def get_delegators(request):
 
 @api_view(['GET'])
 def get_pools_performance(request):
-    start_time = time.time()
-
     epoch_param = request.GET.get('epoch')
     
     ## Validation
@@ -126,76 +124,105 @@ def get_pools_performance(request):
         epoch_number = models.EpochStake.objects.aggregate(max_epoch=Max("epoch_no"))["max_epoch"]
         if epoch_number is None:
             return JsonResponse({'Error': 'No epoch stake data found'}, status=404)
+        
+    prev_epoch_number = epoch_number - 1
     
-    # Get epoch data
-    active_slots = models.Block.objects.filter(epoch_no=epoch_number).count()
-    total_ada = models.EpochStake.objects.filter(epoch_no=epoch_number).aggregate(total=Sum('amount'))
-    total_ada = total_ada['total'] or 0 # Use 0 if no total exists
+    # Get epoch data. 
+    # Filter by epoch, group by epoch, count rows
+    active_slots = models.Block.objects \
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no') \
+        .annotate(block_count=Count('block_no')) \
+        
+    logger.debug("Finished retrieving active slots per epoch.")
+    
+    total_ada = models.EpochStake.objects \
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no') \
+        .annotate(total=Sum('amount'))
+    
+    logger.debug("Finished retrieving total ada in pools per epoch.")
     
     # Get epoch params
     epoch_params = models.EpochParam.objects \
-        .filter(epoch_no=epoch_number) \
-        .values_list('decentralisation', 'optimal_pool_count') \
-        .first()
-    
-    if epoch_params:
-        decentralisation, optimal_pool_count = epoch_params
-    else:
-        decentralisation, optimal_pool_count = None, None
-    
-    saturation_point = total_ada / optimal_pool_count
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no', 'decentralisation', 'optimal_pool_count')
+
+    saturation_points = []
+    for epoch_param in epoch_params:
+        ada = next((x['total'] for x in total_ada if x['epoch_no'] == epoch_param['epoch_no']), 0)
+        saturation_point = ada / epoch_param['optimal_pool_count']
+        saturation_points.append({'epoch_no': epoch_param['epoch_no'], 'saturation_point': saturation_point})
+
+    logger.debug("Finished retrieving epoch parameters and calculating saturation point.")
     
     # Annotate each pool with its total stake
     pool_totals = models.EpochStake.objects \
-        .filter(epoch_no=epoch_number) \
-        .values('pool_id').annotate(total_stake=Sum('amount')) \
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no', 'pool_id') \
+        .annotate(total_stake=Sum('amount')) \
         .distinct()
+    
+    logger.debug("Finished calculating total ada per pool per epoch.")
     
     ## Actual block production
-    # Convert key name from slot_leader_id to pool_id to make retrieval easier later
+    # Get number of blocks minted by each slot leader / pool in each epoch
     no_blocks_minted = models.Block.objects \
-        .filter(epoch_no=epoch_number) \
-        .values('slot_leader_id') \
-        .annotate(blocks_minted=Count('block_no')) \
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no', 'slot_leader_id') \
+        .annotate(blocks_minted=Count('slot_leader_id')) \
         .distinct()
     
+    logger.debug("Finished retrieving number of times pools became slot leader per epoch.")
+    
+    # Convert key name from slot_leader_id to pool_id to make retrieval easier later
     # Get slot_leader_id and its corresponding pool_id
     slot_leaders = models.SlotLeader.objects.values('id', 'pool_hash_id')
     slot_leaders_dict = {sl['id']: sl['pool_hash_id'] for sl in slot_leaders}
 
     # Merge pool_id to dict with blocks_minted. List of dicts
     pool_blocks_minted = []
-    for p in no_blocks_minted:
-        slot_leader_id = p['slot_leader_id']
+    for entry in no_blocks_minted:
+        #ada = next(p['slot_leader_id'] for epoch in total_ada if epoch['epoch_no'] == epoch_param['epoch_no']), None
+        epoch = entry['epoch_no']
+        slot_leader_id = entry['slot_leader_id']
+        blocks_minted = entry['blocks_minted']
         pool_id = slot_leaders_dict.get(slot_leader_id, 'Unknown')
         pool_blocks_minted.append({
+            'epoch_no': epoch,
             'pool_id': pool_id,
-            #'slot_leader_id': slot_leader_id,
-            'blocks_minted': p['blocks_minted']
+            'blocks_minted': blocks_minted
         })
 
-    pools_performance = []
+    logger.debug("Finished mapping slot leader ids to pool ids.")
+
+    # Empty final dict
+    result = defaultdict(list)
     
     # Calculate performance metrics
     for pool in pool_totals:
+        epoch = pool['epoch_no']
         pool_id = pool['pool_id']
         pool_stake = pool['total_stake']
+        decentralisation = next((x['decentralisation'] for x in epoch_params if x['epoch_no'] == epoch), 0)
+        ada = next((x['total'] for x in total_ada if x['epoch_no'] == epoch), 0)
+        slots = next((x['block_count'] for x in active_slots if x['epoch_no'] == epoch), 0)
 
         ## Expected block production = active slots * (1-centralization factor)*pool_size/ total staked ada across all pools
-        expected_block_count = Decimal(str(active_slots)) * (1 - Decimal(str(decentralisation))) * pool_stake / Decimal(str(total_ada))
-        actual_block_count = next((item['blocks_minted'] for item in pool_blocks_minted if item['pool_id'] == pool_id), 0)
+        expected_block_count = round(Decimal(str(slots)) * (1 - Decimal(str(decentralisation))) * pool_stake / Decimal(str(ada)), 2)
+        actual_block_count = next((x['blocks_minted'] for x in pool_blocks_minted if x['pool_id'] == pool_id and x['epoch_no'] == epoch), 0)
         ## Saturation = total staked ada/k (optimal pool count)
-        saturation_percent = (pool_stake / saturation_point) * 100 # in percent
+        saturation_point = next((x['saturation_point'] for x in saturation_points if x['epoch_no'] == epoch), 0)
+        saturation_percent = round((pool_stake / saturation_point) * 100, 2) # in percent
 
-        pool_performance = {
+        result[str(epoch)].append({
             'pool_id' : pool_id,
             'pool_stake': pool_stake,
             'expected_block_count' : expected_block_count,
             'actual_block_count': actual_block_count,
             'saturation_percent': saturation_percent
-        }
+        })
 
-        pools_performance.append(pool_performance)
+    logger.debug("Finished calculating pool performance metrics per epoch.")
 
-    return JsonResponse({'pools_performance': pools_performance}, safe=False)
-
+    return JsonResponse(result, safe=False)
