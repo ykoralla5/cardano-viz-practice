@@ -63,7 +63,7 @@ export default function PoolPerformance() {
 
     return(
         // <main className="flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden static">
-        <main className="w-full bg-white border-gray-200 dark:bg-gray-900 text-gray-800 text-xl overflow-hidden static">
+        <main className="h-[calc(100vh-10vh)] bg-white border-gray-200 dark:bg-gray-900 text-gray-800 text-xl overflow-hidden static">
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
                 <BubbleMap poolData={d3DataForSelectedEpoch} selectedEpoch={selectedEpoch} poolPerf={true}/>
                 <div className="absolute bottom-10 left-20 w-5xs flex flex-col justify-center">

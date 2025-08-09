@@ -50,7 +50,7 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
     //}, [getContainerDimensions]) // run everytime container dimensions change
     }, [])
     return (
-        <div ref={containerRef} className="w-full h-[calc(100vh-10vh)] flex-column items-center justify-center">
+        <div ref={containerRef} className="flex-column items-center justify-center">
             {!poolPerf && <CircularPacking 
                 poolData={poolData}
                 selectedEpoch={selectedEpoch}

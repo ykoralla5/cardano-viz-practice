@@ -10,8 +10,6 @@ export function getStructuredData(apiData, stakeThreshold)
             apiData,
             d => d.epoch_no,
             d => d.pool_id)
-    
-        //console.log(groupByEpochPool)
 
         // Keep data according to stake threshold (type object)
         var filteredGroupByEpochPool = Array.from(groupByEpochPool, ([epoch, poolMap]) => [
@@ -66,7 +64,6 @@ export function transformToD3Hierarchy(structuredData) {
 export function createDelegatorPoolMap(epochData) {
     const delegatorToPoolMap = new Map() // Map<delegatorName, poolName>
     if (!epochData || !epochData.children) {
-        //console.error("No data")
         return delegatorToPoolMap
     }
 
@@ -94,11 +91,10 @@ export function getStructuredPoolPerfData(apiData, epochNumber) {
                 value: d.pool_stake,
                 saturation_percent: d.saturation_percent,
                 actual_block_count: d.actual_block_count,
-                expected_block_count: d.expected_block_count
+                expected_block_count: d.expected_block_count,
+                performance_ratio: d.actual_block_count / d.expected_block_count
             }))
         }
-
-    console.log(d3DataForSelectedEpoch)
     return d3DataForSelectedEpoch
 }
 
