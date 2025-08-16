@@ -3,7 +3,7 @@ import CircularPacking from "./CirclePacking"
 import CircularPackingPoolPerf from "./CirclePackingPoolPerf"
 
 /* Direct container of the bubble map */
-export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf }) 
+export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf, selectedBubble, setSelectedBubble }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: 800, height: 600})
@@ -50,10 +50,10 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
     //}, [getContainerDimensions]) // run everytime container dimensions change
     }, [])
     return (
-        <div ref={containerRef} className="flex-column items-center justify-center">
+        <div ref={containerRef} className='w-full'>
             {!poolPerf && <CircularPacking 
                 poolData={poolData}
-                selectedEpoch={selectedEpoch}
+                selectedEpoch={selectedEpoch} dimensions={{'width': dimensions.width, 'height': dimensions.height}}
                 //width={dimensions.width}
                 // height={dimensions.height}
                 width = {dimensions.width}
@@ -62,8 +62,10 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
                 />}
             {poolPerf && <CircularPackingPoolPerf poolData={poolData}
                 selectedEpoch={selectedEpoch}
-                width = {dimensions.width}
-                height={dimensions.height}/>}
+                dimensions={{'width': dimensions.width, 'height': dimensions.height}}
+                selectedBubble={selectedBubble}
+                setSelectedBubble={setSelectedBubble}
+                />}
         </div>
     )
 }

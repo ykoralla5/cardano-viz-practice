@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { Children, useEffect, useRef, useState, useMemo } from 'react'
 
 /* Generate bubble map */
-export default function CircularPacking ({ poolData, width, height, selectedEpoch, flowLinks })
+export default function CircularPacking ({ poolData, dimensions, selectedEpoch, flowLinks, selectedBubbleId, setSelectedBubbleId })
  {
     const svgReference = useRef(null)
     //const currentTotalActiveStake = totalStake //22.09 billion ADA
@@ -14,7 +14,7 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
     useEffect(() => {
         if (poolData.size === 0) return
 
-        const margin = 20
+        const padding = 20 // set padding between bubbles
 
         //console.log(poolData.children)
 
@@ -47,20 +47,27 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
                 return 0
                 //return d3.ascending(parseInt(a.data.name.split('_')[1]), parseInt(b.data.name.split('_')[1]))
             })
-
-        const size = Math.min(width, height)
     
         // Make area of circle equal to value. This gives every pool coordinates (x,y) and a radius
         const pack = d3.pack()
-            .size([400,400])
-            .padding(4) // Padding between pool bubbles
+            .size([dimensions.width, dimensions.height])
+            .padding(padding) // Padding between pool bubbles
 
         const nodes = pack(root)
             .descendants()
             .slice(1) // to remove outer most bubble
 
-        //const node15 = nodes.filter(d => d.depth == 1 && d.data.name == 74)
-        //console.log(selectedEpoch, node15)
+        // Filtering
+            // Choose nodes only with expected blocks greater than 1
+            // const nodesToConsider = nodes.filter(d => d.data.name !== undefined && d.depth == 1 && d.data.expected_block_count > 1)
+    
+            // Creating color scale for performance ratios
+            // const performanceRatios = nodesToConsider.filter(d => d.data.name !== undefined && d.depth == 1).map(d => d.data.performance_ratio)
+            // const perfRatioMinVal = d3.min(performanceRatios)
+            // const perfRatioMaxVal = d3.max(performanceRatios)
+            // const perfRatioColorScale = d3.scaleSqrt() //decide whether to use d3.scaleLinear vs d3.scaleOrdinal vs d3.scaleLog
+            //     .domain([perfRatioMinVal, perfRatioMaxVal])
+            //     .range([0, 1])
 
 
         const poolValuesToColor = nodes.filter(d => d.data.name !== undefined && d.depth == 1).map(d => d.data.name)
@@ -112,6 +119,16 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
             .append('g')
             .attr('transform', 'translate(0,0)')
 
+        const tooltip = d3.select('#tooltip')
+                        .style('opacity', 0)
+                        .style('font-size', '12px')
+                        .style('color', 'black')
+                        .style('position', 'absolute')
+                        .style('padding', '6px 10px')
+                        .style('background', 'pink')
+                        .style('border-radius', '4px')
+                        .style('stroke', 'black')
+
         const bubbles = g
             .selectAll('circle')
             .data(nodes, (d) => d.data.name)
@@ -120,8 +137,6 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
                 .append('circle')
                 .attr('cx', (d) => d.x)
                 .attr('cy', (d) => d.y)
-                // .attr('cx', d => xScale(parseInt(d.data.name.split('_')[1])))
-                // .attr('cy', d => yScale(parseInt(d.data.name.split('_')[1])))
                 .attr('r', (d) => d.r)
                 .style('opacity', 0.8)
                 // different color schemes for pools (Depth 1) and delegators (Depth 2)
@@ -130,39 +145,33 @@ export default function CircularPacking ({ poolData, width, height, selectedEpoc
                 //.style('fill', (d) => d.depth === 2 ? color(parseInt(d.data.name.split('_')[1])): d3.interpolateBlues(colorScale(parseInt(d.data.name.split('_')[1]))))
                 .attr('stroke', (d) => d.depth === 1 ? 'white' : 'none') 
                 .attr('stroke-width', (d) => d.depth === 1 ? 2 : 0)
-                .transition().duration(800)
-                //.attr('r', (d) => d.r)
-            )
-            .on('mouseover', mouseover)
-            .on('mousemove', mousemove)
-            .on('mouseleave', mouseleave)
-
-        const tooltip = g
-            .selectAll('text')
-            //.data(nodes)
-            //.join('text')
-            //.attr('x', (d) => d.x)
-            //.attr('y', (d) => d.y)
-            //.attr('font-size', '15px')
-            .attr('text-anchor', 'middle')
-            .attr('alignment-baseline', 'before-edge')
-            .attr('fill', '#fff')
-            .style('pointer-events', 'none')
-            //.text((d) => d.amount)
-
-        var mouseover = function(d) {
-            tooltip.style("opacity", 1)
-        }
-        var mousemove = function(d) {
-            tooltip
-                .html(d.name + "<br>" + "long: " + d.long + "<br>" + "lat: " + d.lat)
-                .style("left", (d3.mouse(this)[0]+10) + "px")
-                .style("top", (d3.mouse(this)[1]) + "px")
-        }
-        var mouseleave = function(d) {
-            tooltip.style("opacity", 0)
-        }
-     }, [poolData, width, height])
+                .transition().duration(800))
+            .on('click', (event, d) => {
+                setSelectedBubbleId(d.data.name) // set bubble id as pool id
+                console.log(selectedBubbleId)
+                //d3.attr('stroke', (d) => d.data.name === selectedBubbleId ? 'white' : '')
+                d3.select('#info-panel')
+                    .style('opacity', 1)
+                    .html('Pool: '+ d.data.name + '<br>' + 
+                        'Actual / Expected block count: ' + d.data.actual_block_count + ' / ' + d.data.expected_block_count + '<br>' +
+                        'Performance ratio: ' + Math.round(d.data.performance_ratio * 100) / 100 + '<br>' +
+                        'Saturation percent: ' + d.data.saturation_percent
+                                )
+                        })
+            .on('mouseover', (event, d) => {
+                tooltip
+                    .style('opacity', 1)
+                    .html('Pool: '+ d.data.name + '<br>' + 
+                        'Actual / Expected block count: ' + d.data.actual_block_count + ' / ' + d.data.expected_block_count + '<br>' + 
+                        'Performance ratio: ' + Math.round(d.data.performance_ratio * 100) / 100 + '<br>' +
+                        'Saturation percent: ' + d.data.saturation_percent)
+                    .style('left', d.x + 10 + 'px')
+                    .style('top', d.y + 10 + 'px')
+            })
+            .on('mouseout', function(d) {
+                tooltip.style('opacity', 0)
+            })
+     }, [poolData, selectedEpoch])
 
         /* TODO:
             1. show delegation changes using arrows

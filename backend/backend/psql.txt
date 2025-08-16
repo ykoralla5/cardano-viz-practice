@@ -1,0 +1,186 @@
+Materialized views
+
+mv_epoch_delegator_stake: 
+    WITH ranked AS (
+         SELECT es.epoch_no,
+            ph.view AS pool_id,
+            sa.view AS delegator_id,
+            es.amount AS stake_amount,
+            sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view) AS pool_total,
+            sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view ORDER BY es.amount DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
+           FROM epoch_stake es
+             JOIN pool_hash ph ON ph.id = es.pool_id
+             JOIN stake_address sa ON sa.id = es.addr_id
+        )
+    SELECT ranked.epoch_no,
+        ranked.pool_id,
+        ranked.delegator_id,
+        ranked.stake_amount,
+        ranked.pool_total,
+        ranked.running_total
+    FROM ranked
+    WHERE ranked.running_total <= (ranked.pool_total * 0.5);
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ratio to be calculated on django
+    WITH total_epoch_blocks AS (
+        SELECT epoch_no, COUNT(block_no) AS active_slots FROM block GROUP BY epoch_no
+    ),
+    total_epoch_stake AS (
+        SELECT
+            epoch_no, SUM(amount) AS total_stake
+        FROM epoch_stake
+        GROUP BY epoch_no
+    ),
+    pool_epoch_blocks AS (
+        SELECT 
+            b.epoch_no, sl.pool_hash_id AS pool_id, COUNT(b.id) AS actual_blocks
+        FROM block b
+        JOIN slot_leader sl ON sl.id = b.slot_leader_id
+        WHERE sl.pool_hash_id IS NOT NULL 
+        GROUP BY b.epoch_no, sl.pool_hash_id
+    ),
+    pool_epoch_stake AS (
+        SELECT
+            epoch_no, pool_id, SUM(amount) AS pool_stake FROM epoch_stake GROUP BY epoch_no, pool_id
+    )
+    SELECT
+        ep.epoch_no,
+        ph.view AS pool_id,
+        COALESCE(peb.actual_blocks) AS actual_blocks,
+        ROUND(((teb.active_slots::numeric * (1 - ep.decentralisation::numeric) * pes.pool_stake::numeric)/ tes.total_stake::numeric),2) AS expected_blocks
+    FROM epoch_param ep
+    JOIN epoch_stake es ON es.epoch_no = ep.epoch_no
+    JOIN pool_hash ph ON ph.id = es.pool_id
+    JOIN total_epoch_blocks teb ON teb.epoch_no = ep.epoch_no
+    JOIN total_epoch_stake tes ON teb.epoch_no = ep.epoch_no
+    JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
+    LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id
+    LEFT JOIN block b ON b.slot_leader_id = ph.id AND b.epoch_no = ep.epoch_no;
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_pool_stats: delegator count, saturation_percent, pledge, is_active
+    WITH total_epoch_stake AS (
+        SELECT
+            epoch_no,
+            SUM(amount) AS total_stake
+        FROM epoch_stake
+        GROUP BY epoch_no
+    ),
+    SELECT
+        es.epoch_no,
+        es.pool_id,
+        ph.hash AS pool_hash,
+        SUM(es.stake) AS total_stake,
+        COUNT(DISTINCT es.addr_id) AS delegator_count,
+        ((SUM(es.stake) / (tes.total_stake / ep.optimal_pool_count)) * 100) AS saturation_percent,
+        pu.pledge,
+        NOT EXISTS (
+            SELECT 1
+            FROM pool_retire pr
+            WHERE pr.pool_id = es.pool_id
+            AND pr.retire_epoch <= es.epoch_no
+        ) AS is_active
+    FROM
+        epoch_stake es
+    JOIN
+        pool_hash ph ON ph.id = es.pool_id
+    JOIN
+        epoch_param ep ON ep.epoch_no = es.epoch_no
+    JOIN
+        pool_update pu on pu.hash_id = es.pool_id
+    JOIN
+        total_epoch_stake tes ON tes.epoch_no = es.epoch_no
+    GROUP BY
+        es.epoch_no, es.pool_id, ph.hash, ep.optimal_pool_count, tes.total_stake;
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_params: decentralisation, pledge influence, saturation point
+    WITH total_epoch_stake AS (
+        SELECT
+            epoch_no,
+            SUM(amount) AS total_stake
+        FROM epoch_stake
+        GROUP BY epoch_no
+    )
+    SELECT 
+		ep.epoch_no,
+		ep.influence AS pledge_influence,
+		ep.decentralisation,
+    	(tes.total_stake / ep.optimal_pool_count) AS saturation_point
+    FROM 
+        epoch_param ep
+    JOIN
+        total_epoch_stake tes ON tes.epoch_no = ep.epoch_no;
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_stats_gini: gini coefficient
+WITH pool_stakes AS (
+    SELECT
+        epoch_no,
+        pool_id,
+        amount,
+        SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
+        ROW_NUMBER() OVER (PARTITION BY epoch_no ORDER BY amount ASC) AS rank_asc,
+        COUNT(amount) OVER (PARTITION BY epoch_no) AS num_pools
+    FROM
+        epoch_stake
+    WHERE
+        epoch_no >= 209
+),
+gini_calc AS (
+    SELECT
+        epoch_no,
+        num_pools,
+        total_stake,
+        SUM(rank_asc * amount) AS sum_product_rank_stake
+    FROM
+        pool_stakes
+    GROUP BY
+        epoch_no, num_pools, total_stake
+)
+SELECT
+    epoch_no,
+    (2 * sum_product_rank_stake / (num_pools * total_stake)) - ((num_pools + 1.0) / num_pools) AS gini_coefficient
+FROM
+    gini_calc
+ORDER BY
+    epoch_no DESC;
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_stats_nakamoto: nakamoto coefficient
+WITH pool_stakes_ranked AS (
+    SELECT
+        epoch_no,
+        pool_id,
+        amount,
+        SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
+        SUM(amount) OVER (PARTITION BY epoch_no ORDER BY amount DESC) AS cumulative_stake
+    FROM
+        epoch_stake
+    WHERE
+        epoch_no >= 209
+),
+nakamoto_calc AS (
+    SELECT
+        epoch_no,
+        COUNT(pool_id) AS nakamoto_coefficient
+    FROM
+        pool_stakes_ranked
+    WHERE
+        cumulative_stake > total_stake * 0.5
+    GROUP BY
+        epoch_no
+)
+SELECT
+    epoch_no,
+    nakamoto_coefficient
+FROM
+    nakamoto_calc
+ORDER BY
+    epoch_no DESC;

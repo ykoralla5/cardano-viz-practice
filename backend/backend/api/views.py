@@ -146,7 +146,7 @@ def get_pools_performance(request):
     # Get epoch params
     epoch_params = models.EpochParam.objects \
         .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
-        .values('epoch_no', 'decentralisation', 'optimal_pool_count')
+        .values('epoch_no', 'decentralisation', 'optimal_pool_count', 'influence')
 
     saturation_points = []
     for epoch_param in epoch_params:
@@ -174,6 +174,21 @@ def get_pools_performance(request):
         .distinct()
     
     logger.debug("Finished retrieving number of times pools became slot leader per epoch.")
+
+    delegator_counts = models.EpochStake.objects \
+        .filter(Q(epoch_no=prev_epoch_number) | Q(epoch_no=epoch_number)) \
+        .values('epoch_no', 'pool_id') \
+        .annotate(no_delegators=Count('addr_id')) \
+        .distinct()
+    
+    # No need to filter by epoch since we are first ordering by epoch in desc order
+    ## TODO: Get pledge value for nearest lower epoch number
+    pledges = models.PoolUpdate.objects \
+        .order_by('-active_epoch_no') \
+        .values('hash_id', 'pledge') \
+        .distinct()
+    
+    
     
     # Convert key name from slot_leader_id to pool_id to make retrieval easier later
     # Get slot_leader_id and its corresponding pool_id
@@ -205,8 +220,10 @@ def get_pools_performance(request):
         pool_id = pool['pool_id']
         pool_stake = pool['total_stake']
         decentralisation = next((x['decentralisation'] for x in epoch_params if x['epoch_no'] == epoch), 0)
+        pledge_influence = next((x['influence'] for x in epoch_params if x['epoch_no'] == epoch), 0)
         ada = next((x['total'] for x in total_ada if x['epoch_no'] == epoch), 0)
         slots = next((x['block_count'] for x in active_slots if x['epoch_no'] == epoch), 0)
+        delegators_count = next((x['no_delegators'] for x in delegator_counts if x['epoch_no'] == epoch and x['pool_id'] == pool_id), 0)
 
         ## Expected block production = active slots * (1-centralization factor)*pool_size/ total staked ada across all pools
         expected_block_count = round(Decimal(str(slots)) * (1 - Decimal(str(decentralisation))) * pool_stake / Decimal(str(ada)), 2)
@@ -218,9 +235,14 @@ def get_pools_performance(request):
         result[str(epoch)].append({
             'pool_id' : pool_id,
             'pool_stake': pool_stake,
+            'delegators_count': delegators_count,
             'expected_block_count' : expected_block_count,
             'actual_block_count': actual_block_count,
-            'saturation_percent': saturation_percent
+            'saturation_percent': saturation_percent,
+            'decentralisation': decentralisation,
+            'pledge_influence': pledge_influence
+            #'pledge': pledge,
+            #'ros': ros
         })
 
     logger.debug("Finished calculating pool performance metrics per epoch.")
