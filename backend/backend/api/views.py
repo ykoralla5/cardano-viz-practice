@@ -14,17 +14,43 @@ import time
 # Logger instance
 logger = logging.getLogger(__name__)
 
+# Helper function
+def get_delegator_stakes(epoch_number):    
+    delegator_stakes = models.MvEpochDelegatorStake.objects \
+            .filter(epoch_no=epoch_number)
+    return delegator_stakes
+
+# Helper function
+def get_delegator_movements(epoch_number):    
+    delegator_movements = models.MvEpochDelegationMovements.objects \
+            .filter(epoch_no=epoch_number)
+    return delegator_movements
+
+# Helper function
+def get_pool_stats(epoch_number):
+    pool_stats = models.MvEpochPoolStats.objects \
+            .filter(epoch_no=epoch_number)
+
+    return pool_stats
+
+# Helper function
+def get_epoch_params(epoch_number):
+    epoch_params = models.MvEpochParams.objects \
+            .filter(epoch_no=epoch_number)
+
+    return epoch_params
+
 @api_view(['GET'])
-def get_delegators(request):
+def get_epoch_snapshot(request):
     start_time = time.time()
 
-    epoch_param = request.GET.get('epoch')
-    stake_threshold_param = request.GET.get('stake_threshold')
+    epoch_qparam = request.GET.get('epoch')
+    stake_threshold_qparam = request.GET.get('stake_threshold')
     
     ## Validation
     # If request includes epoch number, use it otherwise get most recent epoch
-    if epoch_param:
-        epoch_number = utils.validate_epoch(epoch_param)
+    if epoch_qparam:
+        epoch_number = utils.validate_epoch(epoch_qparam)
         if isinstance(epoch_number, JsonResponse):
             return epoch_number
     else:
@@ -33,82 +59,47 @@ def get_delegators(request):
             return JsonResponse({'Error': 'No epoch stake data found'}, status=404)
         
     # If request includes stake threshold, use it otherwise use default 50%
-    if stake_threshold_param:
-        stake_threshold = utils.validate_stake_threshold(stake_threshold_param)
+    if stake_threshold_qparam:
+        stake_threshold = utils.validate_stake_threshold(stake_threshold_qparam)
         if isinstance(stake_threshold, JsonResponse):
             return stake_threshold
     else:
         stake_threshold = 50
-        
-    # Get distinct pools
-    # pools = models.EpochStake.objects \
-    #     .filter(epoch_no=epoch_number) \
-    #     .order_by('pool_id') \
-    #     .values_list('pool_id', flat=True) \
-    #     .distinct() # [:100]
-    # print(f'Pools are {pools}')
 
-    # Get all delegators from the distinct pools in epoch_no
-    # Filter out rows where amount is 0 to remove addresses which are not part of the pool anymore
-    # delegators = models.EpochStake.objects \
-    #     .filter(epoch_no=epoch_number, amount__gt=Decimal('0')) \
-    #     .order_by('amount') \
-    #     .values('addr_id','pool_id','amount','epoch_no') \
-    #     .aggregate(total_amount=Sum('amount')) \
-    #     .annotate(cumsum=Window(expression=Sum('amount'), order_by='addr_id')) \
-    #     .values('addr_id','pool_id', 'epoch_no', 'amount', 'cumsum') \
-    #     .order_by('cumsum')
+    ## Get data from PSQL materialized views
+    # Stakes delegated to pools by addresses
+    delegator_stakes = get_delegator_stakes(epoch_number)
+    delegator_stakes_ser = serializers.EpochDelegatorsStkSerializer(delegator_stakes, many=True)
+    delegator_stakes_data = delegator_stakes_ser.data
     
-    # print(delegators.total_amount)
+    # Delegation movements from end of previous epoch
+    delegator_movements = get_delegator_movements(epoch_number)
+    delegator_movements_ser = serializers.EpochDelegatorsMovSerializer(delegator_movements, many=True)
+    delegator_movements_data = delegator_movements_ser.data
 
-    # Annotate each pool with its total stake
-    pool_totals = models.EpochStake.objects \
-        .filter(pool_id=OuterRef('pool_id'), epoch_no=OuterRef('epoch_no')) \
-        .annotate(total=Sum('amount')) \
-        .values('total')[:1] # Get only total value for each pool
+    # Pool statistics in epoch
+    pool_stats = get_pool_stats(epoch_number)
+    pool_stats_ser = serializers.EpochPoolStatsSerializer(pool_stats, many=True)
+    pool_stats_data = pool_stats_ser.data
+
+    # Epoch parameters
+    epoch_params = get_epoch_params(epoch_number)
+    epoch_params_ser = serializers.EpochParamsSerializer(epoch_params, many=True)
+    epoch_params_data = epoch_params_ser.data
     
-    delegations_annotated = models.EpochStake.objects \
-        .filter(epoch_no=epoch_number) \
-        .annotate(total_pool_amount=Subquery(pool_totals, output_field=DecimalField()),pool_cumulative_amount=Window(expression=Sum('amount'), partition_by=[F('pool_id')], order_by='addr_id'))
-    
-    print(delegations_annotated)
     print(time.time() - start_time)
-    
-    # Filtering
 
-    
-    # total = delegators.aggregate(Sum('amount'))
-    # total = total['amount__sum']
-    #print(f'There are {len(delegators)} delegators to {len(pools)} pools. Pools is of type {type(pools)} and delegators is of type {type(delegators)}.')
+    # Merge data
+    combined = []
+    combined.append({
+        "delegator_stakes": delegator_stakes_data,
+        "delegator_movements": delegator_movements_data,
+        "pool_stats": pool_stats_data,
+        "epoch_params": epoch_params_data
+    })
 
-    # Get delegators above the cumulative stake threshold
-    # sort by amount
-    
-    
-    # filter till that index
+    return Response(combined)
 
-    # if not delegators:
-    #     return JsonResponse({'Error': f'No data found for epoch {epoch_number}'}, status=404)
-    # calculate cumulative
-    # delegators = delegators \
-    #     .annotate(cumsum=Window(expression=Sum('amount'), order_by='addr_id')) \
-    #     .values('addr_id','pool_id', 'epoch_no', 'amount', 'cumsum') \
-    #     .order_by('cumsum')
-    
-
-    
-    # calculate index at which threshold is reached
-    # index = delegators.filter(cumsum__lt = Decimal(total * stake_threshold)).count()
-    # print(total, index)
-    
-    
-    #print(delegators)
-
-    serializer = serializers.EpochStakeSerializer(delegations_annotated, many=True)
-    #delegators_list = list(serializer.data)
-    #print(delegators_list[0]['amount'])
-    logger.info(type(serializer.data))
-    return Response(serializer.data)
 
 @api_view(['GET'])
 def get_pools_performance(request):

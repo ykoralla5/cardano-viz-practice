@@ -3,9 +3,10 @@ Materialized views
 mv_epoch_delegator_stake: 
     WITH ranked AS (
          SELECT es.epoch_no,
-            ph.view AS pool_id,
+            es.pool_id AS pool_id, // ADD THIS COLUMN
+            ph.view AS pool_view,
             sa.view AS delegator_id,
-            es.amount AS stake_amount,
+            es.amount AS amount,
             sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view) AS pool_total,
             sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view ORDER BY es.amount DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
            FROM epoch_stake es
@@ -13,13 +14,36 @@ mv_epoch_delegator_stake:
              JOIN stake_address sa ON sa.id = es.addr_id
         )
     SELECT ranked.epoch_no,
-        ranked.pool_id,
-        ranked.delegator_id,
-        ranked.stake_amount,
+        ranked.pool_view,
+        ranked.stake_addr_view,
+        ranked.amount,
         ranked.pool_total,
         ranked.running_total
     FROM ranked
     WHERE ranked.running_total <= (ranked.pool_total * 0.5);
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_delegation_movements: shows delegation movements made from previous epoch
+
+SELECT
+    curr_epoch.epoch_no,
+    curr_epoch.addr_id,
+	st_add.view AS stake_addr_view,
+	prev_epoch.pool_id AS source_pool_id,
+	ph_prev.view AS source_pool_view,
+	curr_epoch.pool_id AS destination_pool_id,
+    ph_curr.view AS destination_pool_view,
+    curr_epoch.amount AS amount
+FROM epoch_stake prev_epoch
+JOIN epoch_stake curr_epoch 
+    ON prev_epoch.addr_id = curr_epoch.addr_id
+   AND curr_epoch.epoch_no = prev_epoch.epoch_no + 1
+JOIN pool_hash ph_prev ON ph_prev.id = prev_epoch.pool_id
+JOIN pool_hash ph_curr ON ph_curr.id = curr_epoch.pool_id
+JOIN stake_address st_add ON st_add.id = curr_epoch.addr_id
+WHERE prev_epoch.pool_id <> curr_epoch.pool_id
+ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -61,48 +85,54 @@ mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ra
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
-mv_epoch_pool_stats: delegator count, saturation_percent, pledge, is_active
-    WITH total_epoch_stake AS (
-        SELECT
-            epoch_no,
-            SUM(amount) AS total_stake
+mv_epoch_pool_stats: delegator count, saturation_ratio, pledge, is_active
+
+    WITH pledge_at_snapshot AS (
+        SELECT DISTINCT ON (ph.id, e.no) 
+            ph.id AS pool_id,
+            e.no AS epoch_no,
+            pu.pledge
+        FROM pool_hash ph
+        JOIN pool_update pu ON pu.hash_id = ph.id
+        JOIN tx t ON t.id = pu.registered_tx_id
+        JOIN block b ON b.id = t.block_id
+        JOIN epoch e ON b.time <= e.end_time
+        ORDER BY ph.id, e.no, b.time DESC
+    ),
+    total_active AS (
+        SELECT epoch_no, SUM(amount) AS total_active_stake
         FROM epoch_stake
         GROUP BY epoch_no
-    ),
+    )
     SELECT
         es.epoch_no,
         es.pool_id,
-        ph.hash AS pool_hash,
-        SUM(es.stake) AS total_stake,
+        ph.view AS pool_view,
+        SUM(es.amount) AS total_stake,
         COUNT(DISTINCT es.addr_id) AS delegator_count,
-        ((SUM(es.stake) / (tes.total_stake / ep.optimal_pool_count)) * 100) AS saturation_percent,
-        pu.pledge,
+        pledges.pledge,
         NOT EXISTS (
-            SELECT 1
-            FROM pool_retire pr
-            WHERE pr.pool_id = es.pool_id
-            AND pr.retire_epoch <= es.epoch_no
-        ) AS is_active
-    FROM
-        epoch_stake es
-    JOIN
-        pool_hash ph ON ph.id = es.pool_id
-    JOIN
-        epoch_param ep ON ep.epoch_no = es.epoch_no
-    JOIN
-        pool_update pu on pu.hash_id = es.pool_id
-    JOIN
-        total_epoch_stake tes ON tes.epoch_no = es.epoch_no
-    GROUP BY
-        es.epoch_no, es.pool_id, ph.hash, ep.optimal_pool_count, tes.total_stake;
+                SELECT 1
+                FROM pool_retire pr
+                WHERE pr.hash_id = es.pool_id
+                AND pr.retiring_epoch <= es.epoch_no
+            ) AS is_active,
+        (SUM(es.amount) / (ta.total_active_stake / ep.optimal_pool_count)) AS saturation_ratio
+    FROM epoch_stake es
+    JOIN pool_hash ph ON ph.id = es.pool_id
+    JOIN epoch_param ep ON ep.epoch_no = es.epoch_no
+    JOIN total_active ta ON ta.epoch_no = es.epoch_no
+    LEFT JOIN pledge_at_snapshot pledges
+        ON pledges.pool_id = es.pool_id AND pledges.epoch_no = es.epoch_no
+    GROUP BY es.epoch_no, es.pool_id, ph.view, pledges.pledge, ep.optimal_pool_count, ta.total_active_stake;
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_params: decentralisation, pledge influence, saturation point
-    WITH total_epoch_stake AS (
+    WITH total_active AS (
         SELECT
             epoch_no,
-            SUM(amount) AS total_stake
+            SUM(amount) AS total_active_stake
         FROM epoch_stake
         GROUP BY epoch_no
     )
@@ -110,11 +140,11 @@ mv_epoch_params: decentralisation, pledge influence, saturation point
 		ep.epoch_no,
 		ep.influence AS pledge_influence,
 		ep.decentralisation,
-    	(tes.total_stake / ep.optimal_pool_count) AS saturation_point
+    	(ta.total_active_stake / ep.optimal_pool_count) AS saturation_point
     FROM 
         epoch_param ep
     JOIN
-        total_epoch_stake tes ON tes.epoch_no = ep.epoch_no;
+        total_active ta ON ta.epoch_no = ep.epoch_no;
 
 ---------------------------------------------------------------------------------------------------------------------------------
 

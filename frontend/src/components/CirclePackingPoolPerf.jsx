@@ -16,9 +16,7 @@ export default function CircularPackingPoolPerf ({ poolData, dimensions, selecte
 
     /*
         TODO:
-            1. Stroke scale for saturation percent
-            2. Color scale for saturation percent
-            3. Tooltip position on smaller screen is better than bigger screen
+            1. Update infopanel on epoch change with selected bubble data from the new epoch selected
     */
 
     useEffect(() => {

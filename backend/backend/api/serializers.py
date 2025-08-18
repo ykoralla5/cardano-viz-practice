@@ -1,7 +1,22 @@
 from rest_framework import serializers
-from .models import EpochStake
+from . import models
 
-class EpochStakeSerializer(serializers.ModelSerializer):
+class EpochDelegatorsStkSerializer(serializers.ModelSerializer):
     class Meta:
-        model = EpochStake
-        fields = ['id', 'addr_id', 'pool_id', 'amount', 'epoch_no']
+        model = models.MvEpochDelegatorStake
+        fields = '__all__'
+
+class EpochDelegatorsMovSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochDelegationMovements
+        fields = '__all__'
+
+class EpochPoolStatsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochPoolStats
+        fields = '__all__'
+
+class EpochParamsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochParams
+        fields = '__all__'

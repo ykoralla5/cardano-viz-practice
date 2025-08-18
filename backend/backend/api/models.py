@@ -285,3 +285,60 @@ class Tx(models.Model):
         managed = False
         db_table = 'tx'
         app_label = 'api'
+
+class MvEpochDelegatorStake(models.Model):
+    epoch_no = models.IntegerField()
+    pool_view = models.CharField()
+    stake_addr_view = models.CharField()
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+    pool_total = models.DecimalField(max_digits=20, decimal_places=0)
+    running_total = models.DecimalField(max_digits=20, decimal_places=0)
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_delegator_stake'
+        app_label = 'api'
+        unique_together = ('epoch_no', 'pool_view')
+    
+class MvEpochDelegationMovements(models.Model):
+    epoch_no = models.IntegerField()
+    addr_id = models.BigIntegerField()
+    stake_addr_view = models.CharField()
+    source_pool_id = models.BigIntegerField()
+    source_pool_view = models.CharField()
+    destination_pool_id = models.BigIntegerField()
+    destination_pool_view = models.CharField()
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_delegation_movements'
+        app_label = 'api'
+        unique_together = ('epoch_no', 'addr_id')
+
+class MvEpochPoolStats(models.Model):
+    epoch_no = models.IntegerField()
+    pool_id = models.BigIntegerField()
+    pool_view = models.CharField()
+    total_stake = models.DecimalField(max_digits=20, decimal_places=0)
+    delegator_count = models.IntegerField()
+    pledge = models.DecimalField(max_digits=20, decimal_places=0)
+    is_active = models.BooleanField()
+    saturation_ratio = models.FloatField()
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_pool_stats'
+        app_label = 'api'
+        unique_together = ('epoch_no', 'pool_id')
+
+class MvEpochParams(models.Model):
+    epoch_no = models.IntegerField(primary_key=True)
+    pledge_influence = models.FloatField()
+    decentralisation = models.FloatField()
+    saturation_point = models.FloatField()
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_params'
+        app_label = 'api' 
