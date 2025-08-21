@@ -1,46 +1,8 @@
-// import Header from '../components/Header'
-// import Main from '../components/Main'
-// import CircularPacking from '../components/CirclePacking'
-
-// /* Direct container of the bubble map */
-// export default function BubbleMapArrow() 
-// {
-//     return (
-//         <div>
-//             <Header />
-//             <Main>
-//             <CircularPacking 
-//                 poolData={poolData}
-//                 selectedEpoch={selectedEpoch}
-//                 //width={dimensions.width}
-//                 // height={dimensions.height}
-//                 width = {window.innerWidth}
-//                 height={window.innerHeight}
-//                 />
-//                 </Main>
-//         </div>
-//     )
-// }
-
-// import Header from '../components/Header'
-// import Main from "../components/Main"
-
-// /* Direct container of the bubble map */
-// export default function BubbleMapArrow() 
-// {
-//     return (
-//         <div>
-//             <Header />
-//             <Main/>
-//         </div>
-//     )
-// }
-
 import * as d3 from 'd3'
 import { Children, useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { clsx } from 'clsx'
 import BubbleMap from '../components/BubbleMap'
-import { fetchPools } from "../api/fetchPools"
+import { fetchPoolMovements } from "../api/fetchPoolMovements"
 import { getStructuredData, transformToD3Hierarchy, findEpochByKeyInMap } from '../utils/dataTransformers'
 
 /* Fetching data from API and keeping addresses holding top 50% of stakes*/
@@ -48,6 +10,7 @@ export default function BubbleMapNoArrow() {
     // State values
     const [rawData, setRawData] = useState(null)
     const [selectedEpoch, setSelectedEpoch] = useState(560)
+    const [selectedBubble, setSelectedBubble] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
     const [stakeThreshold, setStakeThreshold] = useState(0.5)
@@ -79,7 +42,7 @@ export default function BubbleMapNoArrow() {
         try {
             setIsLoading(true)
             // Make API call
-            const response = await fetchPools(selectedEpoch)
+            const response = await fetchPoolMovements(selectedEpoch)
             //console.log(response)
             setRawData(response)
             }
@@ -113,8 +76,13 @@ export default function BubbleMapNoArrow() {
     return(
         <main className="flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
-                <BubbleMap poolData={d3DataForSelectedEpoch} selectedEpoch={selectedEpoch} stakeThreshold={stakeThreshold} />
-                <div className="w-5xs flex flex-col justify-center">
+                <BubbleMap 
+                    poolData={rawData} 
+                    selectedEpoch={selectedEpoch}
+                    stakeThreshold={stakeThreshold} 
+                    selectedBubble={selectedBubble}
+                    setSelectedBubble={setSelectedBubble}/>
+                <div className="absolute bottom-10 left-20 flex flex-col justify-center">
                     <form onSubmit={handleSubmit}>
                         <div className="flex flex-col justify-center">
                             <label htmlFor="epoch-slider" className="self-center dark:text-white">Epoch number:</label>

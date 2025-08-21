@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.db.models import Max, Window, Sum, OuterRef, Subquery, DecimalField, F, Count, Q
+from django.db.models.functions import Least, Greatest
 from decimal import Decimal
 from collections import defaultdict
 from . import models
@@ -16,28 +17,41 @@ logger = logging.getLogger(__name__)
 
 # Helper function
 def get_delegator_stakes(epoch_number):    
-    delegator_stakes = models.MvEpochDelegatorStake.objects \
-            .filter(epoch_no=epoch_number)
+    delegator_stakes = models.MvEpochDelegatorStake2.objects \
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'pool_id', 'pool_view', 'stake_addr_id', 'stake_addr_view', 'amount', 'pool_total', 'running_total')
     return delegator_stakes
 
 # Helper function
 def get_delegator_movements(epoch_number):    
     delegator_movements = models.MvEpochDelegationMovements.objects \
-            .filter(epoch_no=epoch_number)
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'addr_id', 'stake_addr_view', 'source_pool_id', 'source_pool_view', 'destination_pool_id', 'destination_pool_view', 'amount')
     return delegator_movements
+
+# Helper function
+def get_delegator_movement_counts(epoch_number):    
+    delegator_movement_counts = models.MvEpochDelegationMovCounts.objects \
+            .filter(epoch_no=epoch_number) \
+            .annotate(pool1=Least('source_pool_id', 'destination_pool_id'),
+                      pool2=Greatest('source_pool_id', 'destination_pool_id')) \
+            .values('epoch_no', 'pool1', 'pool2') \
+            .annotate(movement_count=Sum('movement_count')) \
+            .order_by('-movement_count')
+    return delegator_movement_counts
 
 # Helper function
 def get_pool_stats(epoch_number):
     pool_stats = models.MvEpochPoolStats.objects \
-            .filter(epoch_no=epoch_number)
-
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'pool_id', 'pool_view', 'total_stake', 'delegator_count', 'pledge', 'is_active', 'saturation_ratio')
     return pool_stats
 
 # Helper function
 def get_epoch_params(epoch_number):
     epoch_params = models.MvEpochParams.objects \
-            .filter(epoch_no=epoch_number)
-
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'pledge_influence', 'decentralisation', 'saturation_point')
     return epoch_params
 
 @api_view(['GET'])
@@ -68,34 +82,40 @@ def get_epoch_snapshot(request):
 
     ## Get data from PSQL materialized views
     # Stakes delegated to pools by addresses
-    delegator_stakes = get_delegator_stakes(epoch_number)
-    delegator_stakes_ser = serializers.EpochDelegatorsStkSerializer(delegator_stakes, many=True)
-    delegator_stakes_data = delegator_stakes_ser.data
+    # delegator_stakes = get_delegator_stakes(epoch_number)
+    # delegator_stakes_ser = serializers.EpochDelegatorsStkSerializer2(delegator_stakes, many=True)
+    # delegator_stakes_data = delegator_stakes_ser.data
+
+    # # Delegation movements from end of previous epoch
+    # delegator_movements = get_delegator_movements(epoch_number)
+    # delegator_movements_ser = serializers.EpochDelegatorsMovSerializer(delegator_movements, many=True)
+    # delegator_movements_data = delegator_movements_ser.data
+
+    # Delegation movements counts between pools from end of previous epoch
+    delegator_movement_counts = get_delegator_movement_counts(epoch_number)
+    delegator_movement_counts_ser = serializers.EpochDelegatorsMovCountSerializer(delegator_movement_counts, many=True)
+    delegator_movement_counts_data = delegator_movement_counts_ser.data
     
-    # Delegation movements from end of previous epoch
-    delegator_movements = get_delegator_movements(epoch_number)
-    delegator_movements_ser = serializers.EpochDelegatorsMovSerializer(delegator_movements, many=True)
-    delegator_movements_data = delegator_movements_ser.data
-
     # Pool statistics in epoch
-    pool_stats = get_pool_stats(epoch_number)
-    pool_stats_ser = serializers.EpochPoolStatsSerializer(pool_stats, many=True)
-    pool_stats_data = pool_stats_ser.data
+    # pool_stats = get_pool_stats(epoch_number)
+    # pool_stats_ser = serializers.EpochPoolStatsSerializer(pool_stats, many=True)
+    # pool_stats_data = pool_stats_ser.data
 
-    # Epoch parameters
-    epoch_params = get_epoch_params(epoch_number)
-    epoch_params_ser = serializers.EpochParamsSerializer(epoch_params, many=True)
-    epoch_params_data = epoch_params_ser.data
+    # # Epoch parameters
+    # epoch_params = get_epoch_params(epoch_number)
+    # epoch_params_ser = serializers.EpochParamsSerializer(epoch_params, many=True)
+    # epoch_params_data = epoch_params_ser.data
     
     print(time.time() - start_time)
 
     # Merge data
     combined = []
     combined.append({
-        "delegator_stakes": delegator_stakes_data,
-        "delegator_movements": delegator_movements_data,
-        "pool_stats": pool_stats_data,
-        "epoch_params": epoch_params_data
+        # "delegator_stakes": delegator_stakes_data,
+        # "delegator_movements": delegator_movements_data,
+        "delegator_movement_counts": delegator_movement_counts_data,
+        # "pool_stats": pool_stats_data,
+        # "epoch_params": epoch_params_data
     })
 
     return Response(combined)
@@ -178,8 +198,6 @@ def get_pools_performance(request):
         .order_by('-active_epoch_no') \
         .values('hash_id', 'pledge') \
         .distinct()
-    
-    
     
     # Convert key name from slot_leader_id to pool_id to make retrieval easier later
     # Get slot_leader_id and its corresponding pool_id

@@ -1,11 +1,12 @@
 Materialized views
 
-mv_epoch_delegator_stake: 
+mv_epoch_delegator_stake_v2: 
     WITH ranked AS (
          SELECT es.epoch_no,
-            es.pool_id AS pool_id, // ADD THIS COLUMN
+            es.pool_id AS pool_id,
             ph.view AS pool_view,
-            sa.view AS delegator_id,
+            es.addr_id AS stake_addr_id,
+            sa.view AS stake_addr_view,
             es.amount AS amount,
             sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view) AS pool_total,
             sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view ORDER BY es.amount DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
@@ -14,36 +15,66 @@ mv_epoch_delegator_stake:
              JOIN stake_address sa ON sa.id = es.addr_id
         )
     SELECT ranked.epoch_no,
+        ranked.pool_id,
         ranked.pool_view,
+        ranked.stake_addr_id,
         ranked.stake_addr_view,
         ranked.amount,
         ranked.pool_total,
         ranked.running_total
     FROM ranked
-    WHERE ranked.running_total <= (ranked.pool_total * 0.5);
+    WHERE ranked.running_total <= (ranked.pool_total * 0.5) ORDER BY epoch_no, pool_total DESC;
+
+    CREATE UNIQUE INDEX ON mv_epoch_delegator_stake_v2 (epoch_no, pool_id, stake_addr_id);
+
+---------------------------------------------------------------------------------------------------------------------------------
+mv_epoch_delegation_movement_counts: example format:
+[
+  {"from": "PoolA", "to": "PoolB", "count": 30},
+  {"from": "PoolB", "to": "PoolA", "count": 20},
+  {"from": "PoolA", "to": "PoolC", "count": 15},
+  {"from": "PoolC", "to": "PoolB", "count": 5}
+]
+
+    SELECT
+        epoch_no,
+        source_pool_id,
+        source_pool_view,
+        destination_pool_id,
+        destination_pool_view,
+        COUNT(*) AS movement_count
+    FROM mv_epoch_delegation_movements
+    WHERE source_pool_id IS NOT NULL
+    AND destination_pool_id IS NOT NULL
+    AND source_pool_id <> destination_pool_id
+    GROUP BY epoch_no, source_pool_id, destination_pool_id, source_pool_view, destination_pool_view ORDER BY epoch_no, movement_count DESC;
+
+    CREATE UNIQUE INDEX ON mv_epoch_delegation_movement_counts (epoch_no, source_pool_id, destination_pool_id);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_delegation_movements: shows delegation movements made from previous epoch
 
-SELECT
-    curr_epoch.epoch_no,
-    curr_epoch.addr_id,
-	st_add.view AS stake_addr_view,
-	prev_epoch.pool_id AS source_pool_id,
-	ph_prev.view AS source_pool_view,
-	curr_epoch.pool_id AS destination_pool_id,
-    ph_curr.view AS destination_pool_view,
-    curr_epoch.amount AS amount
-FROM epoch_stake prev_epoch
-JOIN epoch_stake curr_epoch 
-    ON prev_epoch.addr_id = curr_epoch.addr_id
-   AND curr_epoch.epoch_no = prev_epoch.epoch_no + 1
-JOIN pool_hash ph_prev ON ph_prev.id = prev_epoch.pool_id
-JOIN pool_hash ph_curr ON ph_curr.id = curr_epoch.pool_id
-JOIN stake_address st_add ON st_add.id = curr_epoch.addr_id
-WHERE prev_epoch.pool_id <> curr_epoch.pool_id
-ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
+    SELECT
+        curr_epoch.epoch_no,
+        curr_epoch.addr_id,
+        st_add.view AS stake_addr_view,
+        prev_epoch.pool_id AS source_pool_id,
+        ph_prev.view AS source_pool_view,
+        curr_epoch.pool_id AS destination_pool_id,
+        ph_curr.view AS destination_pool_view,
+        curr_epoch.amount AS amount
+    FROM epoch_stake prev_epoch
+    JOIN epoch_stake curr_epoch 
+        ON prev_epoch.addr_id = curr_epoch.addr_id
+    AND curr_epoch.epoch_no = prev_epoch.epoch_no + 1
+    JOIN pool_hash ph_prev ON ph_prev.id = prev_epoch.pool_id
+    JOIN pool_hash ph_curr ON ph_curr.id = curr_epoch.pool_id
+    JOIN stake_address st_add ON st_add.id = curr_epoch.addr_id
+    WHERE prev_epoch.pool_id <> curr_epoch.pool_id
+    ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
+
+    CREATE UNIQUE INDEX ON mv_epoch_delegation_movements (epoch_no, addr_id);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -82,6 +113,8 @@ mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ra
     JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
     LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id
     LEFT JOIN block b ON b.slot_leader_id = ph.id AND b.epoch_no = ep.epoch_no;
+
+    CREATE UNIQUE INDEX ON mv_epoch_pool_performance (epoch_no, pool_id);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -126,6 +159,8 @@ mv_epoch_pool_stats: delegator count, saturation_ratio, pledge, is_active
         ON pledges.pool_id = es.pool_id AND pledges.epoch_no = es.epoch_no
     GROUP BY es.epoch_no, es.pool_id, ph.view, pledges.pledge, ep.optimal_pool_count, ta.total_active_stake;
 
+    CREATE UNIQUE INDEX ON mv_epoch_pool_stats (epoch_no, pool_id);
+
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_params: decentralisation, pledge influence, saturation point
@@ -146,71 +181,77 @@ mv_epoch_params: decentralisation, pledge influence, saturation point
     JOIN
         total_active ta ON ta.epoch_no = ep.epoch_no;
 
+    CREATE UNIQUE INDEX ON mv_epoch_params (epoch_no);
+
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_stats_gini: gini coefficient
-WITH pool_stakes AS (
+    WITH pool_stakes AS (
+        SELECT
+            epoch_no,
+            pool_id,
+            amount,
+            SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
+            ROW_NUMBER() OVER (PARTITION BY epoch_no ORDER BY amount ASC) AS rank_asc,
+            COUNT(amount) OVER (PARTITION BY epoch_no) AS num_pools
+        FROM
+            epoch_stake
+        WHERE
+            epoch_no >= 209
+    ),
+    gini_calc AS (
+        SELECT
+            epoch_no,
+            num_pools,
+            total_stake,
+            SUM(rank_asc * amount) AS sum_product_rank_stake
+        FROM
+            pool_stakes
+        GROUP BY
+            epoch_no, num_pools, total_stake
+    )
     SELECT
         epoch_no,
-        pool_id,
-        amount,
-        SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
-        ROW_NUMBER() OVER (PARTITION BY epoch_no ORDER BY amount ASC) AS rank_asc,
-        COUNT(amount) OVER (PARTITION BY epoch_no) AS num_pools
+        (2 * sum_product_rank_stake / (num_pools * total_stake)) - ((num_pools + 1.0) / num_pools) AS gini_coefficient
     FROM
-        epoch_stake
-    WHERE
-        epoch_no >= 209
-),
-gini_calc AS (
-    SELECT
-        epoch_no,
-        num_pools,
-        total_stake,
-        SUM(rank_asc * amount) AS sum_product_rank_stake
-    FROM
-        pool_stakes
-    GROUP BY
-        epoch_no, num_pools, total_stake
-)
-SELECT
-    epoch_no,
-    (2 * sum_product_rank_stake / (num_pools * total_stake)) - ((num_pools + 1.0) / num_pools) AS gini_coefficient
-FROM
-    gini_calc
-ORDER BY
-    epoch_no DESC;
+        gini_calc
+    ORDER BY
+        epoch_no DESC;
+
+    CREATE UNIQUE INDEX ON mv_epoch_stats_gini (epoch_no);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_stats_nakamoto: nakamoto coefficient
-WITH pool_stakes_ranked AS (
+    WITH pool_stakes_ranked AS (
+        SELECT
+            epoch_no,
+            pool_id,
+            amount,
+            SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
+            SUM(amount) OVER (PARTITION BY epoch_no ORDER BY amount DESC) AS cumulative_stake
+        FROM
+            epoch_stake
+        WHERE
+            epoch_no >= 209
+    ),
+    nakamoto_calc AS (
+        SELECT
+            epoch_no,
+            COUNT(pool_id) AS nakamoto_coefficient
+        FROM
+            pool_stakes_ranked
+        WHERE
+            cumulative_stake > total_stake * 0.5
+        GROUP BY
+            epoch_no
+    )
     SELECT
         epoch_no,
-        pool_id,
-        amount,
-        SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
-        SUM(amount) OVER (PARTITION BY epoch_no ORDER BY amount DESC) AS cumulative_stake
+        nakamoto_coefficient
     FROM
-        epoch_stake
-    WHERE
-        epoch_no >= 209
-),
-nakamoto_calc AS (
-    SELECT
-        epoch_no,
-        COUNT(pool_id) AS nakamoto_coefficient
-    FROM
-        pool_stakes_ranked
-    WHERE
-        cumulative_stake > total_stake * 0.5
-    GROUP BY
-        epoch_no
-)
-SELECT
-    epoch_no,
-    nakamoto_coefficient
-FROM
-    nakamoto_calc
-ORDER BY
-    epoch_no DESC;
+        nakamoto_calc
+    ORDER BY
+        epoch_no DESC;
+
+    CREATE UNIQUE INDEX ON mv_epoch_stats_nakamoto (epoch_no);

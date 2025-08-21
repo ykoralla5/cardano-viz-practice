@@ -10,9 +10,10 @@ export default function BubbleMapArrow() {
     // State values
     const [rawData, setRawData] = useState(null)
     const [selectedEpoch, setSelectedEpoch] = useState(560)
+    const [selectedBubble, setSelectedBubble] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [stakeThreshold, setStakeThreshold] = useState(0.5)
+    // const [stakeThreshold, setStakeThreshold] = useState(0.5)
     //const [stakeChanges, setStakeChanges] = useState({})
 
     // Static values

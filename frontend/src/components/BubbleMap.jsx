@@ -6,7 +6,7 @@ import CircularPackingPoolPerf from "./CirclePackingPoolPerf"
 export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf, selectedBubble, setSelectedBubble }) 
 {
     const containerRef = useRef(null)
-    const [dimensions, setDimensions] = useState({width: 800, height: 600})
+    const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
 
     // const getContainerDimensions = useCallback(() => {
     //     if(containerRef.current) {
@@ -23,7 +23,7 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
         const resizeOberver = new ResizeObserver((entries) => {
             const entry = entries[0]
             const { width, height } = entry.contentRect
-            setDimensions( {width, height })
+            setDimensions({ width, height })
         })
 
         resizeOberver.observe(containerRef.current)
@@ -53,12 +53,10 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
         <div ref={containerRef} className='w-full'>
             {!poolPerf && <CircularPacking 
                 poolData={poolData}
-                selectedEpoch={selectedEpoch} dimensions={{'width': dimensions.width, 'height': dimensions.height}}
-                //width={dimensions.width}
-                // height={dimensions.height}
-                width = {dimensions.width}
-                height={dimensions.height}
-                flowLinks = {flowLinks}
+                selectedEpoch={selectedEpoch}
+                dimensions={{'width': dimensions.width, 'height': dimensions.height}}
+                selectedBubble={selectedBubble}
+                setSelectedBubble={setSelectedBubble}
                 />}
             {poolPerf && <CircularPackingPoolPerf poolData={poolData}
                 selectedEpoch={selectedEpoch}
