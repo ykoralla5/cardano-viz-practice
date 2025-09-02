@@ -1,6 +1,5 @@
 from django.db import models
 
-
 class Block(models.Model):
     id = models.BigAutoField(primary_key=True)
     hash = models.BinaryField(unique=True)
@@ -311,22 +310,22 @@ class MvEpochDelegationMovements(models.Model):
         app_label = 'api'
         unique_together = ['epoch_no', 'addr_id']
 
-class MvEpochDelegationMovCounts(models.Model):
+class MvEpochDelegationMovAmountCounts(models.Model):
     epoch_no = models.IntegerField()
     source_pool_id = models.BigIntegerField()
     source_pool_view = models.CharField()
     destination_pool_id = models.BigIntegerField()
     destination_pool_view = models.CharField()
     movement_count = models.IntegerField()
+    movement_amount = models.DecimalField(max_digits=20, decimal_places=0)
 
     class Meta:
         managed = False
-        db_table = 'mv_epoch_delegation_movement_counts'
+        db_table = 'mv_epoch_delegation_movement_amounts_counts'
         app_label = 'api'
         unique_together = ['epoch_no', 'source_pool_id', 'destination_pool_id']
 
 class MvEpochPoolStats(models.Model):
-    # id = models.BigAutoField(primary_key=True)
     epoch_no = models.IntegerField()
     pool_id = models.BigIntegerField()
     pool_view = models.CharField()

@@ -3,19 +3,10 @@ import CircularPacking from "./CirclePacking"
 import CircularPackingPoolPerf from "./CirclePackingPoolPerf"
 
 /* Direct container of the bubble map */
-export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf, selectedBubble, setSelectedBubble }) 
+export default function BubbleMap({ nodes, nodeLinks, selectedBubble, setSelectedBubble }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
-
-    // const getContainerDimensions = useCallback(() => {
-    //     if(containerRef.current) {
-    //         setDimensions({
-    //             width: containerRef.current.clientWidth,
-    //             height: containerRef.current.clientHeight
-    //         })
-    //     }
-    // }, [])
 
     useEffect(() => {
         if (!containerRef.current) return
@@ -28,42 +19,16 @@ export default function BubbleMap({ poolData, selectedEpoch, flowLinks, poolPerf
 
         resizeOberver.observe(containerRef.current)
         return () => resizeOberver.disconnect()
-        // getContainerDimensions() // Set initial dimensions
-
-
-        // const handleResize = () => {
-
-        //     // Add timeout for performance
-        //     let timeoutId;
-        //     return () => {
-        //         clearTimeout(timeoutId)
-        //         timeoutId = setTimeout(getContainerDimensions, 200)
-        //     }
-        // }
-
-        // const debouncedResize = handleResize()
-        // window.addEventListener('resize', debouncedResize)
-        
-        // return () => {
-        //     window.removeEventListener('resize', debouncedResize)
-        // }
-    //}, [getContainerDimensions]) // run everytime container dimensions change
     }, [])
     return (
         <div ref={containerRef} className='w-full'>
-            {!poolPerf && <CircularPacking 
-                poolData={poolData}
-                selectedEpoch={selectedEpoch}
+            <CircularPacking 
+                nodes={nodes}
+                nodeLinks={nodeLinks}
                 dimensions={{'width': dimensions.width, 'height': dimensions.height}}
                 selectedBubble={selectedBubble}
                 setSelectedBubble={setSelectedBubble}
-                />}
-            {poolPerf && <CircularPackingPoolPerf poolData={poolData}
-                selectedEpoch={selectedEpoch}
-                dimensions={{'width': dimensions.width, 'height': dimensions.height}}
-                selectedBubble={selectedBubble}
-                setSelectedBubble={setSelectedBubble}
-                />}
+                />
         </div>
     )
 }

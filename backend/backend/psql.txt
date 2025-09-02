@@ -1,6 +1,6 @@
 Materialized views
 
-mv_epoch_delegator_stake_v2: 
+mv_epoch_delegator_stake_v2: delegators contributing to the top 50% of the pool
     WITH ranked AS (
          SELECT es.epoch_no,
             es.pool_id AS pool_id,
@@ -51,6 +51,21 @@ mv_epoch_delegation_movement_counts: example format:
 
     CREATE UNIQUE INDEX ON mv_epoch_delegation_movement_counts (epoch_no, source_pool_id, destination_pool_id);
 
+V2: mv_epoch_delegation_movement_amounts_counts (with amounts)
+    SELECT
+        epoch_no,
+        source_pool_id,
+        source_pool_view,
+        destination_pool_id,
+        destination_pool_view,
+		COUNT(*) AS movement_counts,
+        SUM(amount) AS movement_amount
+    FROM mv_epoch_delegation_movements
+    WHERE source_pool_id IS NOT NULL
+    AND destination_pool_id IS NOT NULL
+    AND source_pool_id <> destination_pool_id
+    GROUP BY epoch_no, source_pool_id, destination_pool_id, source_pool_view, destination_pool_view ORDER BY epoch_no, movement_amount DESC;
+
 ---------------------------------------------------------------------------------------------------------------------------------
 
 mv_epoch_delegation_movements: shows delegation movements made from previous epoch
@@ -74,7 +89,7 @@ mv_epoch_delegation_movements: shows delegation movements made from previous epo
     WHERE prev_epoch.pool_id <> curr_epoch.pool_id
     ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
 
-    CREATE UNIQUE INDEX ON mv_epoch_delegation_movements (epoch_no, addr_id);
+    CREATE UNIQUE INDEX unique_mv_epoch_del_mov ON mv_epoch_delegation_movements (epoch_no, addr_id);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -255,3 +270,104 @@ mv_epoch_stats_nakamoto: nakamoto coefficient
         epoch_no DESC;
 
     CREATE UNIQUE INDEX ON mv_epoch_stats_nakamoto (epoch_no);
+
+
+CREATE MATERIALIZED VIEW mv_pledge_at_snapshot AS
+SELECT DISTINCT ON (ph.id, e.no) 
+    ph.id AS pool_id,
+    e.no AS epoch_no,
+    pu.pledge
+FROM pool_hash ph
+JOIN pool_update pu ON pu.hash_id = ph.id
+JOIN tx t ON t.id = pu.registered_tx_id
+JOIN block b ON b.id = t.block_id
+JOIN epoch e ON b.time <= e.end_time
+ORDER BY ph.id, e.no, b.time DESC;
+
+CREATE MATERIALIZED VIEW mv_total_active_stake AS
+SELECT epoch_no, SUM(amount) AS total_active_stake
+FROM epoch_stake
+GROUP BY epoch_no;
+
+CREATE MATERIALIZED VIEW mv_last_stake_before_retire AS
+SELECT
+    es.pool_id,
+    pr.retiring_epoch,
+    SUM(es.amount) AS last_stake
+FROM pool_retire pr
+JOIN epoch_stake es
+  ON es.pool_id = pr.hash_id
+ AND es.epoch_no = pr.retiring_epoch - 1
+GROUP BY es.pool_id, pr.retiring_epoch;
+
+WITH total_active AS (
+    SELECT epoch_no, SUM(amount) AS total_active_stake
+    FROM epoch_stake
+    GROUP BY epoch_no
+),
+prev_epoch_stake AS (
+    SELECT
+        es.epoch_no + 1 AS epoch_no,
+        es.pool_id,
+        SUM(es.amount) AS prev_total_stake
+    FROM epoch_stake es
+    GROUP BY es.epoch_no + 1, es.pool_id
+)
+SELECT
+    base.epoch_no,
+    base.pool_id,
+    ph.view AS pool_view,
+    -- adjusted stake
+    CASE
+        WHEN NOT is_active
+         AND COUNT(DISTINCT es.addr_id) = 0
+        THEN pes.prev_total_stake
+        ELSE SUM(es.amount)
+    END AS adjusted_total_stake,
+    -- delegators
+    CASE
+        WHEN NOT is_active
+         AND COUNT(DISTINCT es.addr_id) = 0
+        THEN 0
+        ELSE COUNT(DISTINCT es.addr_id)
+    END AS delegator_count,
+    ps.pledge,
+    is_active,
+    CASE
+        WHEN NOT is_active
+         AND COUNT(DISTINCT es.addr_id) = 0
+        THEN 'full_retirement'
+        WHEN NOT is_active
+         AND COUNT(DISTINCT es.addr_id) > 0
+        THEN 'partial_retirement'
+        ELSE 'active'
+    END AS retirement_case,
+    (CASE
+        WHEN NOT is_active
+         AND COUNT(DISTINCT es.addr_id) = 0
+        THEN pes.prev_total_stake
+        ELSE SUM(es.amount)
+     END) / (ta.total_active_stake / ep.optimal_pool_count) AS saturation_ratio
+FROM (
+    SELECT DISTINCT e.no AS epoch_no, ph.id AS pool_id
+    FROM epoch e
+    CROSS JOIN pool_hash ph
+) base
+JOIN pool_hash ph ON ph.id = base.pool_id
+JOIN epoch_param ep ON ep.epoch_no = base.epoch_no
+JOIN total_active ta ON ta.epoch_no = base.epoch_no
+LEFT JOIN epoch_stake es
+       ON es.pool_id = base.pool_id AND es.epoch_no = base.epoch_no
+LEFT JOIN prev_epoch_stake pes
+       ON pes.epoch_no = base.epoch_no AND pes.pool_id = base.pool_id
+LEFT JOIN mv_pledge_at_snapshot ps
+       ON ps.pool_id = base.pool_id AND ps.epoch_no = base.epoch_no
+LEFT JOIN pool_retire pr
+       ON pr.hash_id = base.pool_id
+     AND pr.retiring_epoch <= base.epoch_no where base.epoch_no=560 and base.pool_id=3564
+GROUP BY base.epoch_no, base.pool_id, ph.view, ps.pledge,
+         ep.optimal_pool_count, ta.total_active_stake,
+         pes.prev_total_stake,
+         (pr.hash_id IS NULL)
+HAVING SUM(es.amount) IS NOT NULL
+    OR (NOT (pr.hash_id IS NULL)); -- keep ghost pools

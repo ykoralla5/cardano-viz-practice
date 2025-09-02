@@ -1,4 +1,4 @@
-export default function InfoPanel({ selectedEpoch, selectedBubble, poolData }) {
+export default function InfoPanel({ selectedBubble, nodes }) {
     if (!selectedBubble) {
         return (
         <div className=""></div>

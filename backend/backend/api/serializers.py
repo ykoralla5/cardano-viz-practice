@@ -16,11 +16,13 @@ class EpochDelegatorsMovCountSerializer(serializers.Serializer):
     pool1 = serializers.IntegerField()
     pool2 = serializers.IntegerField()
     movement_count = serializers.IntegerField()
-    # class Meta:
-    #     model = models.MvEpochDelegationMovCounts
-    #     fields = '__all__'
+    movement_amount = serializers.IntegerField()
 
 class EpochPoolStatsSerializer(serializers.ModelSerializer):
+    # Parse as integer instead of decimal since decimal leads to string
+    total_stake = serializers.IntegerField()
+    pledge = serializers.IntegerField()
+
     class Meta:
         model = models.MvEpochPoolStats
         fields = '__all__'
