@@ -2,10 +2,9 @@ import * as d3 from 'd3'
 import { Children, useEffect, useRef, useState, useMemo } from 'react'
 
 /* Generate bubble map */
-export default function CircularPacking ({ nodes, nodeLinks, dimensions, selectedBubbleId, setSelectedBubbleId })
+export default function CircularPacking ({ nodes, nodeLinks, dimensions, selectedBubble, setSelectedBubble })
  {
     const svgReference = useRef(null)
-    //const currentTotalActiveStake = totalStake //22.09 billion ADA
 
     // Color scale
     const color = d3.scaleOrdinal(d3.schemeCategory10)
@@ -17,14 +16,6 @@ export default function CircularPacking ({ nodes, nodeLinks, dimensions, selecte
     useEffect(() => {
 
         if (!nodes || nodes.length === 0) return
-
-        console.log(nodes, nodeLinks)
-
-        //const nodes = poolData[0]['pool_stats']
-        //const delegatorMovements = poolData[0]['delegator_movement_counts']
-        // const epochParams = poolData[0]['epoch_params']
-
-        //const nodes = poolStats.map(p => ({ pool_id: parseInt(p.pool_id), total_stake: parseInt(p.total_stake), delegator_count: parseInt(p.delegator_count), is_active: p.is_active, saturation_ratio: parseFloat(p.saturation_ratio) }))
 
         // Scaling
         // Color
@@ -108,21 +99,21 @@ export default function CircularPacking ({ nodes, nodeLinks, dimensions, selecte
                     (d.is_active === 'false' && d.delegator_count === 0) ? "4" : "1"
                 })
                 .attr("r", d => radiusScale(d.total_stake))
-                .on("mouseover", function() { d3.select(this).attr("stroke", "#000"); })
-                .on("mouseout", function() { d3.select(this).attr("stroke", null); })
+                .on("mouseover", function() { d3.select(this).attr("stroke", "#000") })
+                .on("mouseout", function() { d3.select(this).attr("stroke", null) })
+                .on("click", function(event, d) {
+                    console.log(d)
+                    // Set full data of selected bubble to be able to show on info panel
+                    setSelectedBubble(d) })
 
-            const labels = svg.selectAll("text")
-                .data(nodes)
-                .join("text")
-                .text(d => {
-                    if (d.is_active === 'false' && d.delegator_count === 0)
-                        return "⚠️"
-                    else return ""
-                })
-                .attr("font-size", "100px")
-                .attr("text-anchor", "middle")
-                .attr("dy", ".35em")
-                .attr("pointer-events", "none")
+        const retiredPoolLabels = svg.selectAll("text")
+            .data(nodes.filter(d => d.is_active === 'false' && d.delegator_count !== 0))
+            .join("text")
+            .text("⚠️")
+            .attr("font-size", "32px")
+            .attr("text-anchor", "middle")
+            .attr("dy", ".35em")
+            .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.pool_id).distance(20)) // normalize
@@ -149,7 +140,11 @@ export default function CircularPacking ({ nodes, nodeLinks, dimensions, selecte
                 .attr("cx", d => d.x)
                 .attr("cy", d => d.y)
 
-            labels
+            // labels
+            //     .attr("x", d => d.x)
+            //     .attr("y", d => d.y)
+
+            retiredPoolLabels
                 .attr("x", d => d.x)
                 .attr("y", d => d.y)
         })

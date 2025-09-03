@@ -98,3 +98,7 @@ export function getStructuredPoolPerfData(apiData, epochNumber) {
     return d3DataForSelectedEpoch
 }
 
+export function formatAda(amount, decimals) {
+    return (amount / 1000000).toLocaleString('de-CH', { maximumFractionDigits: decimals }) + ' ADA'
+}
+

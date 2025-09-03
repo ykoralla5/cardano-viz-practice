@@ -3,6 +3,7 @@ import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'rea
 import { clsx } from 'clsx'
 import BubbleMap from '../components/BubbleMap'
 import FilterForm from '../components/FilterForm'
+import InfoPanel from '../components/InfoPanel'
 import { fetchPoolMovements } from '../api/fetchPoolMovements'
 import { getStructuredData, transformToD3Hierarchy, findEpochByKeyInMap } from '../utils/dataTransformers'
 import { ClipLoader } from 'react-spinners'
@@ -71,9 +72,10 @@ export default function BubbleMapNoArrow() {
     const filteredNodes = useMemo(() => {
         if (!poolData.length) return [0, 0]
         return poolData
-            .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
+            .filter(pool => !pool.is_active)
+            //.filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
             // If retiredPoolsToggle is true, show all pools; if false, show only active pools
-            .filter(pool => filters.retiredPoolsToggle || pool.is_active)
+            //.filter(pool => filters.retiredPoolsToggle || pool.is_active)
     }, [poolData, filters.selectedStakeMin, filters.selectedStakeMax, filters.retiredPoolsToggle])
     
     // Filter node links on filtered nodes as a result of stake range chosen by user
@@ -106,7 +108,7 @@ export default function BubbleMapNoArrow() {
                     epochs={[271, 571]}
                     // epochs={[MIN_EPOCH,maxEpoch]}
                     />
-                {/* {selectedBubble && <InfoPanel selectedBubble={selectedBubble} nodes={nodes} />} */}
+                {selectedBubble && <InfoPanel selectedBubble={selectedBubble} nodes={filteredNodes} />}
             </section>
         </main>
     )

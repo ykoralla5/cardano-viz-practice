@@ -6,7 +6,6 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochs}) 
 
     const handleStakeChange = ([min, max]) => {
         setFilters(prev => ({ ...prev, selectedStakeMin: min, selectedStakeMax: max }))
-        console.log("Changed stake to:", min, max)
     }
 
     const handleEpochChange = (e) => {
@@ -15,7 +14,6 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochs}) 
 
     const handleRetiredChange = (e) => {
         setFilters(prev => ({ ...prev, retiredPoolsToggle: !prev.retiredPoolsToggle }))
-        console.log(retiredPoolsToggle)
     }
 
     return (
