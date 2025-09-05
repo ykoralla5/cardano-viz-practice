@@ -18,6 +18,11 @@ class EpochDelegatorsMovCountSerializer(serializers.Serializer):
     movement_count = serializers.IntegerField()
     movement_amount = serializers.IntegerField()
 
+class EpochDelegatorsMovCntPercentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochDelegationMovAmtCountsPercent
+        fields = ['source_pool_id', 'source_stake_change_percent', 'destination_pool_id', 'dest_stake_change_percent', 'movement_count', 'movement_amount']
+
 class EpochPoolStatsSerializer(serializers.ModelSerializer):
     # Parse as integer instead of decimal since decimal leads to string
     total_stake = serializers.IntegerField()

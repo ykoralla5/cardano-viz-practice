@@ -28,30 +28,14 @@ mv_epoch_delegator_stake_v2: delegators contributing to the top 50% of the pool
     CREATE UNIQUE INDEX ON mv_epoch_delegator_stake_v2 (epoch_no, pool_id, stake_addr_id);
 
 ---------------------------------------------------------------------------------------------------------------------------------
-mv_epoch_delegation_movement_counts: example format:
+mv_epoch_delegation_movement_amounts_counts: example format:
 [
-  {"from": "PoolA", "to": "PoolB", "count": 30},
-  {"from": "PoolB", "to": "PoolA", "count": 20},
-  {"from": "PoolA", "to": "PoolC", "count": 15},
-  {"from": "PoolC", "to": "PoolB", "count": 5}
+  {"from": "PoolA", "to": "PoolB", "count": 30, "amount": 3573592},
+  {"from": "PoolB", "to": "PoolA", "count": 20, "amount": 35734545592},
+  {"from": "PoolA", "to": "PoolC", "count": 15, "amount": 346346457},
+  {"from": "PoolC", "to": "PoolB", "count": 5, "amount": 68689798965}
 ]
 
-    SELECT
-        epoch_no,
-        source_pool_id,
-        source_pool_view,
-        destination_pool_id,
-        destination_pool_view,
-        COUNT(*) AS movement_count
-    FROM mv_epoch_delegation_movements
-    WHERE source_pool_id IS NOT NULL
-    AND destination_pool_id IS NOT NULL
-    AND source_pool_id <> destination_pool_id
-    GROUP BY epoch_no, source_pool_id, destination_pool_id, source_pool_view, destination_pool_view ORDER BY epoch_no, movement_count DESC;
-
-    CREATE UNIQUE INDEX ON mv_epoch_delegation_movement_counts (epoch_no, source_pool_id, destination_pool_id);
-
-V2: mv_epoch_delegation_movement_amounts_counts (with amounts)
     SELECT
         epoch_no,
         source_pool_id,
@@ -65,6 +49,125 @@ V2: mv_epoch_delegation_movement_amounts_counts (with amounts)
     AND destination_pool_id IS NOT NULL
     AND source_pool_id <> destination_pool_id
     GROUP BY epoch_no, source_pool_id, destination_pool_id, source_pool_view, destination_pool_view ORDER BY epoch_no, movement_amount DESC;
+
+    CREATE INDEX idx_mv_movements_epoch_source
+        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, source_pool_id);
+
+    CREATE INDEX idx_mv_movements_epoch_dest
+        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, destination_pool_id);
+
+        OR SINGLE INDEX
+    
+    CREATE INDEX idx_mv_movements_epoch_source_dest
+        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, source_pool_id, destination_pool_id);
+
+---------------------------------------------------------------------------------------------------------------------------------
+mv_epoch_delegation_percent_change:
+
+    V1: WITH stake_with_prev AS (
+        SELECT
+            cur.epoch_no,
+            cur.pool_id,
+            cur.total_stake AS total_stake,
+            prev.total_stake AS prev_total_stake,
+            CASE
+                WHEN prev.total_stake IS NULL OR prev.total_stake = 0 THEN NULL
+                ELSE ROUND(((cur.total_stake - prev.total_stake)::numeric / prev.total_stake) * 100, 2)
+            END AS stake_change_pct
+        FROM mv_epoch_pool_stats cur
+        LEFT JOIN mv_epoch_pool_stats prev
+            ON prev.pool_id = cur.pool_id
+        AND prev.epoch_no = cur.epoch_no - 1
+    )
+    SELECT
+        m.epoch_no,
+        m.source_pool_id,
+        s_prev.prev_total_stake AS source_prev_epoch_stake,
+        s_prev.total_stake AS source_curr_epoch_stake,
+        s_prev.stake_change_pct AS source_stake_change_percent,
+        m.destination_pool_id,
+        d_prev.prev_total_stake AS dest_prev_epoch_stake,
+        d_prev.total_stake AS dest_curr_epoch_stake,
+        d_prev.stake_change_pct AS dest_stake_change_percent,
+        m.movement_counts,
+        m.movement_amount,
+        ROUND((m.movement_amount::numeric / NULLIF(d_prev.prev_total_stake, 0)) * 100, 2) AS percent_of_prev_dest_stake
+    FROM (
+        SELECT
+            epoch_no,
+            source_pool_id,
+            destination_pool_id,
+            COUNT(*) AS movement_counts,
+            SUM(amount) AS movement_amount
+        FROM mv_epoch_delegation_movements
+        WHERE source_pool_id IS NOT NULL
+        AND destination_pool_id IS NOT NULL
+        AND source_pool_id <> destination_pool_id
+        GROUP BY epoch_no, source_pool_id, destination_pool_id
+    ) m
+    LEFT JOIN stake_with_prev s_prev
+        ON s_prev.epoch_no = m.epoch_no
+        AND s_prev.pool_id = m.source_pool_id
+    LEFT JOIN stake_with_prev d_prev
+        ON d_prev.epoch_no = m.epoch_no
+        AND d_prev.pool_id = m.destination_pool_id
+    ORDER BY m.epoch_no DESC, percent_of_prev_dest_stake DESC;
+
+    V2: WITH pool_stake_prev AS (
+    SELECT
+        epoch_no,
+        pool_id,
+        total_stake AS prev_total_stake
+    FROM mv_epoch_pool_stats
+    )
+    SELECT
+        m.epoch_no,
+        
+        -- source
+        m.source_pool_id,
+        ps_src.prev_total_stake AS source_prev_stake,
+        ROUND(
+            CASE
+                WHEN ps_src.prev_total_stake IS NULL OR ps_src.prev_total_stake = 0
+                THEN NULL
+                ELSE (-m.movement_amount::numeric / ps_src.prev_total_stake) * 100
+            END, 5
+        ) AS source_stake_change_pct,
+
+        -- destination
+        m.destination_pool_id,
+        ps_dst.prev_total_stake AS dest_prev_stake,
+        ROUND(
+            CASE
+                WHEN ps_dst.prev_total_stake IS NULL OR ps_dst.prev_total_stake = 0
+                THEN NULL
+                ELSE (m.movement_amount::numeric / ps_dst.prev_total_stake) * 100
+            END, 5
+        ) AS dest_stake_change_pct,
+
+        -- movement info
+        m.movement_amount,
+        m.movement_count
+    FROM (
+        SELECT
+            epoch_no,
+            source_pool_id,
+            destination_pool_id,
+            SUM(amount) AS movement_amount,
+            COUNT(*) AS movement_count
+        FROM mv_epoch_delegation_movements
+        WHERE source_pool_id IS NOT NULL
+        AND destination_pool_id IS NOT NULL
+        AND source_pool_id <> destination_pool_id and epoch_no=560
+        GROUP BY epoch_no, source_pool_id, destination_pool_id
+    ) m
+    LEFT JOIN pool_stake_prev ps_src
+    ON ps_src.epoch_no = m.epoch_no - 1
+    AND ps_src.pool_id = m.source_pool_id
+    LEFT JOIN pool_stake_prev ps_dst
+    ON ps_dst.epoch_no = m.epoch_no - 1
+    AND ps_dst.pool_id = m.destination_pool_id
+    ORDER BY m.epoch_no DESC, m.movement_count DESC;
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -174,7 +277,9 @@ mv_epoch_pool_stats: delegator count, saturation_ratio, pledge, is_active
         ON pledges.pool_id = es.pool_id AND pledges.epoch_no = es.epoch_no
     GROUP BY es.epoch_no, es.pool_id, ph.view, pledges.pledge, ep.optimal_pool_count, ta.total_active_stake;
 
-    CREATE UNIQUE INDEX ON mv_epoch_pool_stats (epoch_no, pool_id);
+    CREATE UNIQUE INDEX idx_mv_pool_stats_epoch_pool_cover
+        ON mv_epoch_pool_stats (epoch_no, pool_id)
+        INCLUDE (total_stake, delegator_count);
 
 ---------------------------------------------------------------------------------------------------------------------------------
 

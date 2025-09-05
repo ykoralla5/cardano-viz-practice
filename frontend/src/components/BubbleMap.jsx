@@ -3,10 +3,13 @@ import CircularPacking from "./CirclePacking"
 import CircularPackingPoolPerf from "./CirclePackingPoolPerf"
 
 /* Direct container of the bubble map */
-export default function BubbleMap({ nodes, nodeLinks, selectedBubble, setSelectedBubble }) 
+export default function BubbleMap({ nodes, nodeLinks, selectedElement, setSelectedElement }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
+
+    const virtualWidth = 3000
+    const virtualHeight = 2000
 
     useEffect(() => {
         if (!containerRef.current) return
@@ -25,9 +28,10 @@ export default function BubbleMap({ nodes, nodeLinks, selectedBubble, setSelecte
             <CircularPacking 
                 nodes={nodes}
                 nodeLinks={nodeLinks}
-                dimensions={{'width': dimensions.width, 'height': dimensions.height}}
-                selectedBubble={selectedBubble}
-                setSelectedBubble={setSelectedBubble}
+                // dimensions={{'width': dimensions.width, 'height': dimensions.height}}
+                dimensions={{'width': virtualWidth, 'height': virtualHeight}}
+                selectedElement={selectedElement}
+                setSelectedElement={setSelectedElement}
                 />
         </div>
     )

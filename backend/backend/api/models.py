@@ -325,6 +325,23 @@ class MvEpochDelegationMovAmountCounts(models.Model):
         app_label = 'api'
         unique_together = ['epoch_no', 'source_pool_id', 'destination_pool_id']
 
+class MvEpochDelegationMovAmtCountsPercent(models.Model):
+    epoch_no = models.IntegerField()
+    source_pool_id = models.BigIntegerField()
+    source_prev_stake = models.DecimalField(max_digits=20, decimal_places=0)
+    source_stake_change_percent = models.FloatField()
+    destination_pool_id = models.BigIntegerField()
+    dest_prev_stake = models.DecimalField(max_digits=20, decimal_places=0)
+    dest_stake_change_percent = models.FloatField()
+    movement_amount = models.DecimalField(max_digits=20, decimal_places=0)
+    movement_count = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_delegation_percent_change'
+        app_label = 'api'
+        unique_together = ['epoch_no', 'source_pool_id', 'destination_pool_id']
+
 class MvEpochPoolStats(models.Model):
     epoch_no = models.IntegerField()
     pool_id = models.BigIntegerField()

@@ -41,6 +41,12 @@ def get_delegator_movement_counts(epoch_number):
             .order_by('-movement_amount')
     return delegator_movement_counts
 
+def get_delegator_movement_counts_percents(epoch_number):
+    delegator_movement_percents = models.MvEpochDelegationMovAmtCountsPercent.objects \
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'source_pool_id', 'source_stake_change_percent', 'destination_pool_id', 'dest_stake_change_percent', 'movement_count', 'movement_amount')    
+    return delegator_movement_percents
+
 # Helper function
 def get_pool_stats(epoch_number):
     pool_stats = models.MvEpochPoolStats.objects \
@@ -54,6 +60,12 @@ def get_epoch_params(epoch_number):
             .filter(epoch_no=epoch_number) \
             .values('epoch_no', 'pledge_influence', 'decentralisation', 'saturation_point')
     return epoch_params
+
+# Helper function
+def get_min_max_epoch():
+    MIN_EPOCH = 271
+    max_epoch = models.EpochStake.objects.aggregate(max_epoch=Max("epoch_no"))["max_epoch"]
+    return [MIN_EPOCH, max_epoch]
 
 @api_view(['GET'])
 def get_epoch_snapshot(request):
@@ -81,21 +93,14 @@ def get_epoch_snapshot(request):
     else:
         stake_threshold = 50
 
-    ## Get data helper functions and serialize
-    # Stakes delegated to pools by addresses
-    delegator_stakes = get_delegator_stakes(epoch_number)
-    delegator_stakes_ser = serializers.EpochDelegatorsStkSerializer2(delegator_stakes, many=True)
-    delegator_stakes_data = delegator_stakes_ser.data
-
-    # Delegation movements from end of previous epoch
-    delegator_movements = get_delegator_movements(epoch_number)
-    delegator_movements_ser = serializers.EpochDelegatorsMovSerializer(delegator_movements, many=True)
-    delegator_movements_data = delegator_movements_ser.data
-
-    # Delegation movements counts between pools from end of previous epoch
-    delegator_movement_counts = get_delegator_movement_counts(epoch_number)
-    delegator_movement_counts_ser = serializers.EpochDelegatorsMovCountSerializer(delegator_movement_counts, many=True)
-    delegator_movement_counts_data = delegator_movement_counts_ser.data
+    # Min and max epoch numbers available
+    min_max_epoch = get_min_max_epoch()
+    if epoch_number < min_max_epoch[0] or epoch_number > min_max_epoch[1]:
+        return JsonResponse({'Error': 'Epoch number must be between ' + str(min_max_epoch[0]) + ' and ' + str(min_max_epoch[1])}, status=400)
+    
+    delegator_movement_stake_percents = get_delegator_movement_counts_percents(epoch_number)
+    delegator_movement_stake_percents_ser = serializers.EpochDelegatorsMovCntPercentSerializer(delegator_movement_stake_percents, many=True)
+    delegator_movement_stake_percents_data = delegator_movement_stake_percents_ser.data
     
     # Pool statistics in epoch
     pool_stats = get_pool_stats(epoch_number)
@@ -110,7 +115,7 @@ def get_epoch_snapshot(request):
     ## Get pool data for all pools in delegator movements
     # Get pool ids for comparison    
     pool_stats_ids = [i['pool_id'] for i in pool_stats_data]
-    delegator_movement_counts_ids = set([val for i in delegator_movement_counts_data for val in (i['pool1'], i['pool2'])])
+    delegator_movement_counts_ids = set([val for i in delegator_movement_stake_percents_data for val in (i['source_pool_id'], i['destination_pool_id'])])
 
     pool_data_final = []
 
@@ -142,9 +147,10 @@ def get_epoch_snapshot(request):
     combined.append({
         # "delegator_stakes": delegator_stakes_data,
         # "delegator_movements": delegator_movements_data,
-        "delegator_movement_counts": delegator_movement_counts_data,
+        "delegator_movement_counts": delegator_movement_stake_percents_data,
         "pool_stats": pool_data_final,
-        "epoch_params": epoch_params_data
+        "epoch_params": epoch_params_data,
+        "min_max_epoch": min_max_epoch
     })
 
     # logger.info("Took " + time.time() - start_time + " seconds to run get_epoch_snapshot view")
