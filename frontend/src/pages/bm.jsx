@@ -3,7 +3,6 @@ import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'rea
 import { clsx } from 'clsx'
 import BubbleMap from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
-import InfoPanel from '../components/InfoPanel'
 import { fetchPoolData } from '../api/fetchPoolData'
 import { ClipLoader } from 'react-spinners'
 
@@ -52,15 +51,6 @@ export default function BubbleMap() {
     useEffect(() => {
         fetchData()
     }, [filters.epoch])
-
-    //     useEffect(() => {
-//         async function fetchMaxEpoch() {
-//             const response = await fetch('/api/epoch-max')
-//             const data = await response.json()
-//             setMaxEpoch(data.maxEpoch)
-//         }
-//         fetchMaxEpoch()
-// }, [])
     
     // Derive min and max stake held by a pool in current epoch
     const minMaxStake = useMemo(() => {
@@ -108,7 +98,6 @@ export default function BubbleMap() {
                     epochRange={epochRange}
                     nodesCount={filteredNodes.length}
                     />
-                {selectedElement && <InfoPanel selectedElement={selectedElement} />}
             </section>
         </main>
     )

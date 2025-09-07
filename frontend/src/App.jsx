@@ -5,6 +5,7 @@ import Header from './components/Header'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Home from './pages/home.jsx'
 import BubbleMap from './pages/bm.jsx'
+import About from './pages/about.jsx'
 
 const router = createBrowserRouter([
   {
@@ -17,8 +18,12 @@ const router = createBrowserRouter([
   },
   {
     path: '/explorer',
-    element: <BubbleMap/>
-  }
+    element: <BubbleMap />
+  },
+  {
+    path: '/about',
+    element: <About />
+  },
 ])
 
 export default function App() {

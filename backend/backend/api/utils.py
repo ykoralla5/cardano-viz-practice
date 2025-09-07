@@ -3,6 +3,7 @@ from . import models
 
 def validate_epoch(epoch_param):
     # Validate if number is provided
+    MIN_EPOCH = 210
     try:
         epoch_number = int(epoch_param)
     except (ValueError, TypeError):
@@ -12,20 +13,7 @@ def validate_epoch(epoch_param):
     if not models.Epoch.objects.filter(no=epoch_number).exists():
         return JsonResponse({'Error': f'Epoch {epoch_number} not found'}, status=404)
     # Validate if epoch number is below 209, so before the Shelley era
-    elif epoch_number <= 209:
-        return JsonResponse({'Error': f'Epoch provided is before Shelley era and has no decentralisation mechanisms'}, status=400)
+    elif epoch_number < MIN_EPOCH:
+        return JsonResponse({'Error': f'Epoch provided is before Shelley era and has no decentralisation mechanisms. Provide an epoch number less than {MIN_EPOCH}'}, status=400)
     
     return epoch_number
-
-def validate_stake_threshold(threshold):
-    MIN_STAKE_THRESHOLD = 0 # or 0 %
-    MAX_STAKE_THRESHOLD = 100 # or 100 %
-    try:
-        threshold = int(threshold)
-    except (ValueError, TypeError):
-        return JsonResponse({'Error': 'Invalid stake threshold'}, status=400)
-    
-    if not (MIN_STAKE_THRESHOLD <= threshold <= MAX_STAKE_THRESHOLD):
-        return JsonResponse({'Error': f'Stake threshold must be between {MIN_STAKE_THRESHOLD} and {MAX_STAKE_THRESHOLD}'}, status=400)
-    
-    return threshold
