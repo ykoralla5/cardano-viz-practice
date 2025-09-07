@@ -2,7 +2,7 @@ import * as d3 from 'd3'
 import { Children, useEffect, useRef, useState, useMemo } from 'react'
 
 /* Generate bubble map */
-export default function CircularPacking ({ nodes, nodeLinks, dimensions, selectedElement, setSelectedElement })
+export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedElement, setSelectedElement })
  {
     const svgReference = useRef(null)
 

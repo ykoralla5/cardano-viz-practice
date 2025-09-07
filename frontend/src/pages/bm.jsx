@@ -1,15 +1,14 @@
 import * as d3 from 'd3'
 import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { clsx } from 'clsx'
-import BubbleMap from '../components/BubbleMap'
+import BubbleMap from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
 import InfoPanel from '../components/InfoPanel'
-import { fetchPoolMovements } from '../api/fetchPoolMovements'
-import { getStructuredData, transformToD3Hierarchy, findEpochByKeyInMap } from '../utils/dataTransformers'
+import { fetchPoolData } from '../api/fetchPoolData'
 import { ClipLoader } from 'react-spinners'
 
 /* Fetching data from API and keeping addresses holding top 50% of stakes */
-export default function BubbleMapNoArrow() {
+export default function BubbleMap() {
     // State values
     const [rawData, setRawData] = useState(null)
     const [poolData, setPoolData] = useState([])
@@ -34,7 +33,7 @@ export default function BubbleMapNoArrow() {
         try {
             setIsLoading(true)
             // Make API call
-            const response = await fetchPoolMovements(filters.epoch)
+            const response = await fetchPoolData(filters.epoch)
             setRawData(response)
             setMovementData(response[0]['delegator_movement_counts'])
             setEpochParamData(response[0]['epoch_params'])
@@ -96,7 +95,7 @@ export default function BubbleMapNoArrow() {
     return(
         <main className="h-[90vh] font-display text-base flex-grow w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
-                <BubbleMap 
+                <LayoutWrapper 
                     nodes={filteredNodes} nodeLinks={filteredLinks}
                     // selectedEpoch={selectedEpoch}
                     // stakeThreshold={stakeThreshold}

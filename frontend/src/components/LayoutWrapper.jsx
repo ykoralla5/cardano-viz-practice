@@ -1,9 +1,8 @@
 import { Children, useCallback, useEffect, useRef, useState, useMemo } from "react"
-import CircularPacking from "./CirclePacking"
-import CircularPackingPoolPerf from "./CirclePackingPoolPerf"
+import BubbleGraph from "./BubbleGraph"
 
 /* Direct container of the bubble map */
-export default function BubbleMap({ nodes, nodeLinks, selectedElement, setSelectedElement }) 
+export default function LayoutWrapper({ nodes, nodeLinks, selectedElement, setSelectedElement }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
@@ -25,7 +24,7 @@ export default function BubbleMap({ nodes, nodeLinks, selectedElement, setSelect
     }, [])
     return (
         <div ref={containerRef} className='w-full'>
-            <CircularPacking 
+            <BubbleGraph 
                 nodes={nodes}
                 nodeLinks={nodeLinks}
                 // dimensions={{'width': dimensions.width, 'height': dimensions.height}}
