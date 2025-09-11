@@ -17,7 +17,7 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochRang
     }
 
     const handleDelegatationOnlyChange = (e) => {
-        setFilters(prev => ({ ...prev, retiredPoolsToggle: !prev.retiredPoolsToggle }))
+        setFilters(prev => ({ ...prev, delegationChangedToggle: !prev.delegationChangedToggle }))
     }
 
     return (
@@ -52,7 +52,7 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochRang
                     <input 
                         className=""
                         type="checkbox" 
-                        checked={delegationChangedToggle} 
+                        checked={filters.delegationChangedToggle} 
                         onChange={handleDelegatationOnlyChange}
                         id="delegationOnly" />
                     <label htmlFor="delegationOnly" className="self-center">Show only pools whose delegation changed</label>
@@ -62,7 +62,7 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochRang
                     <input 
                         className=""
                         type="checkbox" 
-                        checked={retiredPoolsToggle} 
+                        checked={filters.retiredPoolsToggle} 
                         onChange={handleRetiredChange}
                         id="retiredOnly" />
                     <label htmlFor="retiredOnly" className="self-center">Show retired pools</label>

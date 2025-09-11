@@ -11,7 +11,7 @@ export default function InfoPanel({ selectedElement }) {
     if (selectedElement[0].type === "link") {
         const linkData = selectedElement[0].data
         return (
-            <div className='w-[25vw] absolute top-10-vh right-20 bg-white text-sm p-5 rounded-md wrap-anywhere'>
+            <div className='w-[25vw] absolute top-[15vh] right-10 bg-white text-sm p-5 rounded-md wrap-anywhere'>
                 <p><strong>Link Information</strong></p>
                 <p>From Pool: {linkData.source.pool_id} ({linkData.source.pool_view})</p>
                 <p>To Pool: {linkData.target.pool_id} ({linkData.target.pool_view})</p>
@@ -25,7 +25,7 @@ export default function InfoPanel({ selectedElement }) {
     else if (selectedElement[0].type === "pool") {
         const selectedBubble = selectedElement[0].data
         return (
-            <div className='w-[25vw] absolute top-10-vh right-20 bg-white text-sm p-5 rounded-md wrap-anywhere'>
+            <div className='w-[25vw] absolute top-[15vh] right-10 bg-white text-sm p-5 rounded-md wrap-anywhere'>
                 <p><strong>Pool Information</strong></p>
                 <p>Pool id: {selectedBubble.pool_id}</p>
                 <p>Pool view: {selectedBubble.pool_view}</p>

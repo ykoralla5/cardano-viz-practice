@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './index.css'
 // import Main from './components/Main'
 import Header from './components/Header'

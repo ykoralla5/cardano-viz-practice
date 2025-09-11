@@ -120,6 +120,6 @@ def get_epoch_snapshot(request):
         "min_max_epoch": min_max_epoch
     })
 
-    logger.info("Took " + time.time() - start_time + " seconds to run get_epoch_snapshot view")
+    logger.info("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot view")
 
     return Response(combined)

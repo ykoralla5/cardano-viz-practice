@@ -61,8 +61,6 @@ export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedEle
         d3.select(svgReference.current).selectAll('*').remove() // Clear previous svg renders
         
         const svg = d3.select(svgReference.current)
-            // .attr("width", dimensions.width)
-            // .attr("height", dimensions.height)
 
         const g = svg.append("g").attr("class", "chart-content")
 
@@ -84,8 +82,19 @@ export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedEle
             .join("line")
             .attr("stroke-width", d => linkWidthScale(d.movement_amount))
             .attr("stroke", "white")
-            .attr("marker-end", "url(#arrowhead)")
+            // .attr("marker-end", "url(#arrowhead)")
             .on("mouseover", function(event, d) {
+                d3.select(this).style("cursor", "pointer")
+                //setSelectedElement([{"type": "link", "data": d}])
+                d3.select(this).attr("stroke", "yellow")
+            })
+            .on("mouseout", function() { 
+                d3.select(this).style("cursor", "default");
+                // setSelectedElement(null)
+                d3.select(this).attr("stroke", "white") 
+            })
+            .on("click", function(event, d) {
+                // If the clicked link is already selected, deselect it
                 setSelectedElement([{"type": "link", "data": d}])
             })
 
@@ -104,15 +113,25 @@ export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedEle
                     return saturation
                 }
             })
+            // .call(drag(simulation))
             .attr("fill-opacity", 0.8)
             .attr("stroke", d => d.is_active === 'false' ? "red" : "white" )
             .attr("stroke-opacity", 1)
             .attr("stroke-width", d => (d.is_active === 'false' && d.delegator_count === 0) ? "4" : "1")
             .attr("r", d => radiusScale(d.total_stake))
-            .on("mouseover", function(event, d) { 
+            .on("mouseover", function(event, d) {
+                d3.select(this).style("cursor", "pointer")
+                //setSelectedElement([{"type": "pool", "data": d}])
+                d3.select(this).attr("stroke", "#000")
+                })
+            .on("mouseout", function() {
+                // setSelectedElement(null)
+                d3.select(this).attr("stroke", d => d.is_active === 'false' ? "red" : "white" ) 
+            })
+            .on("click", function(event, d) {
+                // If the clicked link is already selected, deselect it
                 setSelectedElement([{"type": "pool", "data": d}])
-                d3.select(this).attr("stroke", "#000") })
-            .on("mouseout", function() { d3.select(this).attr("stroke", null) })
+            })
 
         const retiredPoolLabels = svg.selectAll("text")
             .data(nodes.filter(d => d.is_active === 'false' && d.delegator_count !== 0))
@@ -126,13 +145,13 @@ export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedEle
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.pool_id).distance(20)) // normalize
             .force("charge", d3.forceManyBody().strength(-50))
-            //.force("collision", d3.forceCollide().radius(40))
+            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 10).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
             .force("x", d3.forceX().strength(0.05))
-            .force("y", d3.forceY().strength(0.05));
+            .force("y", d3.forceY().strength(0.05))
+            .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
-        // link.append("title").text(d => d.movement_amount)
-        // bubbles.append("title").text(d => d.pool_id)
+        bubbles.append("title").text(d => d.pool_id)
         // bubbles.append("text").attr("x", d => d.x).attr("y", d => d.y).attr("fill", "black").attr("text-anchor", "middle").style("font-size", "100px").text(d => d.is_active ? '' : 'blah')
 
         simulation.on("tick", () => {
@@ -154,6 +173,31 @@ export default function BubbleGraph ({ nodes, nodeLinks, dimensions, selectedEle
         simulation.on("end", () => {
             console.log("Simulation ended")
         })
+
+        // drag = simulation => {
+  
+        // function dragstarted(event, d) {
+        //     if (!event.active) simulation.alphaTarget(0.3).restart();
+        //     d.fx = d.x;
+        //     d.fy = d.y;
+        // }
+        
+        // function dragged(event, d) {
+        //     d.fx = event.x;
+        //     d.fy = event.y;
+        // }
+        
+        // function dragended(event, d) {
+        //     if (!event.active) simulation.alphaTarget(0);
+        //     d.fx = null;
+        //     d.fy = null;
+        // }
+        
+        // return d3.drag()
+        //     .on("start", dragstarted)
+        //     .on("drag", dragged)
+        //     .on("end", dragended);
+        // }
 
         // const zoom = d3.zoom()
         //     .scaleExtent([0.2, 4])

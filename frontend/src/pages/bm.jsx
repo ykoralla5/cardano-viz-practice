@@ -1,8 +1,9 @@
 import * as d3 from 'd3'
 import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { clsx } from 'clsx'
-import BubbleMap from '../components/LayoutWrapper'
+import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
+import InfoPanel from '../components/InfoPanel'
 import { fetchPoolData } from '../api/fetchPoolData'
 import { ClipLoader } from 'react-spinners'
 
@@ -61,12 +62,21 @@ export default function BubbleMap() {
     // Filter nodes on stake range chosen by user
     const filteredNodes = useMemo(() => {
         if (!poolData.length) return [0, 0]
+        // If delegationChangedToggle is on, show only pools whose delegation changed
+        if (filters.delegationChangedToggle) {
+            const changedPools = new Set(movementData.flatMap(d => [d.source_pool_id, d.destination_pool_id]))
+            const filtered = poolData
+                .filter(pool => changedPools.has(pool.pool_id))
+                .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
+                // If retiredPoolsToggle is true, show all pools; if false, show only active pools
+                .filter(pool => filters.retiredPoolsToggle || pool.is_active)
+            return filtered
+        }
         return poolData
-            //.filter(pool => !pool.is_active)
             .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
             // If retiredPoolsToggle is true, show all pools; if false, show only active pools
             .filter(pool => filters.retiredPoolsToggle || pool.is_active)
-    }, [poolData, filters.selectedStakeMin, filters.selectedStakeMax, filters.retiredPoolsToggle])
+    }, [poolData, filters.selectedStakeMin, filters.selectedStakeMax, filters.retiredPoolsToggle, filters.delegationChangedToggle])
     
     // Filter node links on filtered nodes as a result of stake range chosen by user
     const filteredLinks = useMemo(() => {
@@ -77,8 +87,8 @@ export default function BubbleMap() {
         )
     }, [movementData, filteredNodes])
 
-    // if (isLoading) return <ClipLoader color="white" loading={isLoading} size={150} aria-label="Loading Spinner" data-testid="loader" />
-    if (isLoading) return <div className="text-gray-500 dark:text-white">Loading pools...</div>
+    if (isLoading) return <ClipLoader color="white" loading={isLoading} size={100} aria-label="Loading Spinner" data-testid="loader" />
+    // if (isLoading) return <div className="text-gray-500 dark:text-white">Loading pools...</div>
     if (error) return <div className="text-gray-500 dark:text-white">Error: {error.message}</div>
     if (!rawData) return
 
@@ -87,8 +97,6 @@ export default function BubbleMap() {
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
                 <LayoutWrapper 
                     nodes={filteredNodes} nodeLinks={filteredLinks}
-                    // selectedEpoch={selectedEpoch}
-                    // stakeThreshold={stakeThreshold}
                     selectedElement={selectedElement}
                     setSelectedElement={setSelectedElement}/>
                 <FilterForm 
@@ -98,6 +106,7 @@ export default function BubbleMap() {
                     epochRange={epochRange}
                     nodesCount={filteredNodes.length}
                     />
+                <InfoPanel selectedElement={selectedElement} />
             </section>
         </main>
     )
