@@ -3,7 +3,7 @@ import BubbleGraph from "./BubbleGraph"
 import InfoPanel from '../components/InfoPanel'
 
 /* Direct container of the bubble map */
-export default function LayoutWrapper({ nodes, nodeLinks, selectedElement, setSelectedElement }) 
+export default function LayoutWrapper({ nodes, nodeLinks, radiusScale, saturationScale, selectedElement, setSelectedElement }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
@@ -43,7 +43,7 @@ export default function LayoutWrapper({ nodes, nodeLinks, selectedElement, setSe
             <BubbleGraph 
                 nodes={nodes}
                 nodeLinks={nodeLinks}
-                // dimensions={{'width': dimensions.width, 'height': dimensions.height}}
+                radiusScale={radiusScale} saturationScale={saturationScale}
                 dimensions={{'width': dimensions.width, 'height': dimensions.height}}
                 selectedElement={selectedElement}
                 setSelectedElement={setSelectedElement}

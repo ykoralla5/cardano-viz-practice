@@ -1,11 +1,11 @@
 import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
 
-export default function FilterForm({ filters, setFilters, minMaxStake, epochRange, nodesCount}) {
-    const { selectedStakeMin, selectedStakeMax, epoch, retiredPoolsToggle, delegationChangedToggle } = filters
+export default function FilterForm({ filters, setFilters, minMaxRank, epochRange, nodesCount}) {
+    const { selectedRankMin, selectedRankMax, epoch, retiredPoolsToggle, delegationChangedToggle } = filters
 
-    const handleStakeChange = ([min, max]) => {
-        setFilters(prev => ({ ...prev, selectedStakeMin: min, selectedStakeMax: max }))
+    const handleRankChange = ([min, max]) => {
+        setFilters(prev => ({ ...prev, selectedRankMin: min, selectedRankMax: max }))
     }
 
     const handleEpochChange = (e) => {
@@ -38,14 +38,14 @@ export default function FilterForm({ filters, setFilters, minMaxStake, epochRang
                 </div>
                 {/* Stake threshold selector*/}
                 <div className="flex flex-col justify-center">
-                    <label htmlFor="stake-threshold-slider" className="self-center">Filter by stake: Showing {nodesCount} nodes</label>
+                    <label htmlFor="stake-threshold-slider" className="self-center">Filter by rank: Showing {nodesCount} nodes</label>
                     <Slider 
                         range
                         className='t-slider'
-                        min={minMaxStake[0]} 
-                        max={minMaxStake[1]} 
-                        value={[filters.selectedStakeMin, filters.selectedStakeMax]} 
-                        onChange={handleStakeChange}/>
+                        min={minMaxRank[0]} 
+                        max={minMaxRank[1]} 
+                        value={[filters.selectedRankMin, filters.selectedRankMax]} 
+                        onChange={handleRankChange}/>
                 </div>
                 {/* Show only pools whose delegation changed */}
                 <div className="flex flex-row justify-center">

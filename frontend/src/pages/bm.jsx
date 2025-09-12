@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { Children, useEffect, useMemo, useRef, useState, useCallback, use } from 'react'
 import { clsx } from 'clsx'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
@@ -18,8 +18,8 @@ export default function BubbleMap() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
     const [filters, setFilters] = useState({
-        selectedStakeMin: 1000000000,
-        selectedStakeMax: 50813805220556,
+        selectedRankMin: 0,
+        selectedRankMax: 500,
         epoch: 560,
         retiredPoolsToggle: true,
         delegationChangedToggle: true
@@ -52,31 +52,64 @@ export default function BubbleMap() {
     useEffect(() => {
         fetchData()
     }, [filters.epoch])
-    
+
+    const rankedNodes = useMemo(() => {
+        if (!poolData.length) return []
+
+        return poolData
+            .slice()
+            .sort((a, b) => a.total_stake - b.total_stake) // highest stake first
+            .map((pool, i) => ({
+            ...pool,
+            rank: i + 1 // rank starts at 1
+            }))
+        }, [poolData])
+
+
     // Derive min and max stake held by a pool in current epoch
-    const minMaxStake = useMemo(() => {
+    const minMaxRank = useMemo(() => {
         if (!poolData.length) return [0, 0]
-        return [d3.min(poolData, d => d.total_stake), d3.max(poolData, d => d.total_stake)]
+        return [0, poolData.length - 1]
     }, [poolData])
+
+    const radiusScale = useMemo(() => {
+        if (!poolData.length) return () => 5 // fallback
+        return d3.scaleSqrt()
+                .domain([0, d3.max(poolData, d => d.total_stake)])
+                .range([1, 40])
+        }, [poolData])
+
+    const saturationScale = useMemo(() => {
+        if (!poolData.length) return () => "#ccc"
+        return d3.scaleLinear()
+                .domain([d3.max(poolData, d => d.saturation_ratio), d3.min(poolData, d => d.saturation_ratio)])
+                .range([0, 1])
+        }, [poolData])
+
 
     // Filter nodes on stake range chosen by user
     const filteredNodes = useMemo(() => {
         if (!poolData.length) return [0, 0]
+        //const rankedNodes = poolData.sort((a, b) => a.total_stake - b.total_stake).map((d, i) => ({...d, rank: i + 1}))
         // If delegationChangedToggle is on, show only pools whose delegation changed
         if (filters.delegationChangedToggle) {
             const changedPools = new Set(movementData.flatMap(d => [d.source_pool_id, d.destination_pool_id]))
-            const filtered = poolData
+            const filtered = rankedNodes
                 .filter(pool => changedPools.has(pool.pool_id))
-                .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
-                // If retiredPoolsToggle is true, show all pools; if false, show only active pools
+                .filter(pool => pool.rank >= filters.selectedRankMin && pool.rank <= filters.selectedRankMax)
                 .filter(pool => filters.retiredPoolsToggle || pool.is_active)
+                // .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
+                // If retiredPoolsToggle is true, show all pools; if false, show only active pools
+                
             return filtered
         }
-        return poolData
-            .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
-            // If retiredPoolsToggle is true, show all pools; if false, show only active pools
+        return rankedNodes
+            .filter(pool => pool.rank >= filters.selectedRankMin && pool.rank <= filters.selectedRankMax)
             .filter(pool => filters.retiredPoolsToggle || pool.is_active)
-    }, [poolData, filters.selectedStakeMin, filters.selectedStakeMax, filters.retiredPoolsToggle, filters.delegationChangedToggle])
+            // .filter(pool => pool.total_stake >= filters.selectedStakeMin && pool.total_stake <= filters.selectedStakeMax)
+            // If retiredPoolsToggle is true, show all pools; if false, show only active pools
+            
+    }, [poolData, filters.selectedRankMin, filters.selectedRankMax, filters.retiredPoolsToggle, filters.delegationChangedToggle])
     
     // Filter node links on filtered nodes as a result of stake range chosen by user
     const filteredLinks = useMemo(() => {
@@ -97,12 +130,13 @@ export default function BubbleMap() {
             <section id="d3-chart-container" className="w-full flex flex-col items-center">
                 <LayoutWrapper 
                     nodes={filteredNodes} nodeLinks={filteredLinks}
+                    radiusScale={radiusScale} saturationScale={saturationScale}
                     selectedElement={selectedElement}
-                    setSelectedElement={setSelectedElement}/>
+                    setSelectedElement={setSelectedElement} />
                 <FilterForm 
                     filters={filters} 
                     setFilters={setFilters} 
-                    minMaxStake={minMaxStake} 
+                    minMaxRank={minMaxRank} 
                     epochRange={epochRange}
                     nodesCount={filteredNodes.length}
                     />

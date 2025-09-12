@@ -13,6 +13,9 @@ export default function About()
                         Stake change percentage shown on Info Panel is calculated as: 
                             movement_amount / total_stake_in_previous_epoch
                     </li>
+                    <li>
+                        Saturation ratio is calculated using (stake_held_by_pool / (total_active_stake_in_epoch / optimal_pool_count_in_epoch)) AS saturation_ratio
+                    </li>
                 </ul>
             </section>
         </main>
