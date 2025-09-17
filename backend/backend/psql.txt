@@ -211,7 +211,7 @@ mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ra
             b.epoch_no, sl.pool_hash_id AS pool_id, COUNT(b.id) AS actual_blocks
         FROM block b
         JOIN slot_leader sl ON sl.id = b.slot_leader_id
-        WHERE sl.pool_hash_id IS NOT NULL 
+        WHERE sl.pool_hash_id IS NOT NULL
         GROUP BY b.epoch_no, sl.pool_hash_id
     ),
     pool_epoch_stake AS (
@@ -231,6 +231,39 @@ mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ra
     JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
     LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id
     LEFT JOIN block b ON b.slot_leader_id = ph.id AND b.epoch_no = ep.epoch_no;
+
+    reduced : WITH total_epoch_blocks AS (
+        SELECT epoch_no, COUNT(block_no) AS active_slots FROM block GROUP BY epoch_no
+    ),
+    total_epoch_stake AS (
+        SELECT
+            epoch_no, SUM(amount) AS total_stake
+        FROM epoch_stake
+        GROUP BY epoch_no
+    ),
+    pool_epoch_blocks AS (
+        SELECT 
+            b.epoch_no, sl.pool_hash_id AS pool_id, COUNT(b.id) AS actual_blocks
+        FROM block b
+        JOIN slot_leader sl ON sl.id = b.slot_leader_id
+        WHERE sl.pool_hash_id IS NOT NULL 
+        GROUP BY b.epoch_no, sl.pool_hash_id
+    ),
+    pool_epoch_stake AS (
+        SELECT
+            epoch_no, pool_id, SUM(amount) AS pool_stake FROM epoch_stake GROUP BY epoch_no, pool_id
+    )
+    SELECT
+        ep.epoch_no,
+        peb.pool_id AS pool_id,
+        COALESCE(peb.actual_blocks) AS actual_blocks,
+        ROUND(((teb.active_slots::numeric * (1 - ep.decentralisation::numeric) * pes.pool_stake::numeric)/ tes.total_stake::numeric),2) AS expected_blocks
+    FROM epoch_param ep 
+    JOIN epoch_stake es ON es.epoch_no = ep.epoch_no
+    JOIN total_epoch_blocks teb ON teb.epoch_no = ep.epoch_no
+    JOIN total_epoch_stake tes ON teb.epoch_no = ep.epoch_no
+    JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
+    LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id;
 
     CREATE UNIQUE INDEX ON mv_epoch_pool_performance (epoch_no, pool_id);
 

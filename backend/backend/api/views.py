@@ -84,7 +84,7 @@ def get_epoch_snapshot(request):
     epoch_params_data = epoch_params_ser.data
     
     # Get pool data for all pools in delegator movements
-    ## Get pool ids for comparison    
+    ## Get pool ids for comparison
     pool_stats_ids = [i['pool_id'] for i in pool_stats_data]
     delegator_movement_counts_ids = set([val for i in delegator_movement_stake_percents_data for val in (i['source_pool_id'], i['destination_pool_id'])])
 

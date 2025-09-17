@@ -1,10 +1,13 @@
 import * as d3 from 'd3'
 import { Children, useEffect, useRef, useState, useMemo } from 'react'
+import { CircleLoader } from 'react-spinners'
 
 /* Generate bubble map */
 export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturationScale, dimensions, selectedElement, setSelectedElement })
  {
     const svgReference = useRef(null)
+    const bubblesRef = useRef(null)
+    const linksRef = useRef(null)
 
     // Color scale
     const color = d3.scaleOrdinal(d3.schemeCategory10)
@@ -13,28 +16,10 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
     const colorScale = d3.scaleSequential(d3.interpolateReds)
         .domain([1, 100]) // min & max of your values
 
+
     useEffect(() => {
 
         if (!nodes || nodes.length === 0) return
-
-        // Scaling
-        // Color
-        // const saturationRatios = nodes.map(d => d.saturation_ratio)
-        // const saturationMin = d3.min(saturationRatios)
-        // const saturationMax = d3.max(saturationRatios)
-
-        // const saturationScale = d3.scaleLinear()
-        //     .domain([saturationMin, saturationMax])
-        //     .range([0, 1])
-
-        // Width
-        // const poolStakes = nodes.map(d => parseInt(d.total_stake))
-        // const stakeMinValue = d3.min(poolStakes)
-        // const stakeMaxValue = d3.max(poolStakes)
-
-        // const radiusScale = d3.scaleSqrt()
-        //     .domain([stakeMinValue, stakeMaxValue])
-        //     .range([1, 40])
 
         const movementAmounts = nodeLinks.map(d => d.movement_amount)
         const movementAmountMin = d3.min(movementAmounts)
@@ -63,7 +48,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
         
         const svg = d3.select(svgReference.current)
 
-        const g = svg.append("g").attr("class", "chart-content")
+        const g = svg.append("g").attr("class", "chart-content").style("pointer", "move")
 
         svg.call(
             d3.zoom()
@@ -76,39 +61,24 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
         const linksLayer = g.append("g")
         
         // Add links
-        const link = linksLayer
+        linksRef.current = linksLayer
             .selectAll("line")
             .data(links)
-            .attr("stroke-opacity", d => d.value / movementAmountMax)
-            .join("line")
-            .attr("stroke-width", 1)
-            // .attr("stroke-width", d => linkWidthScale(d.movement_amount))
-            .attr("stroke", "white")
+            //.join("line")
+            .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
-            // .attr("d", d3.link(d3.curveBumpY)
-            //     .x((d) => d.x)
-            //     .y((d) => d.y))
             .on("mouseover", function(event, d) {
                 d3.select(this).style("cursor", "pointer")
-                //setSelectedElement([{"type": "link", "data": d}])
-                d3.select(this).attr("stroke", "yellow")
-            })
-            .on("mouseout", function() { 
-                d3.select(this).style("cursor", "default");
-                // setSelectedElement(null)
-                d3.select(this).attr("stroke", "white") 
-            })
-            .on("click", function(event, d) {
-                // If the clicked link is already selected, deselect it
-                setSelectedElement([{"type": "link", "data": d}])
-            })
+                // d3.select(this).attr("stroke", "yellow")
+                })
+            .on("click", (event, d) => setSelectedElement({"type": "link", "data": d}))
 
         var defs = svg.append("defs")
 
         defs.append("svg:marker")
             .attr("id", "arrowhead") // Give it a unique ID to reference it later
             .attr("viewBox", "0 0 10 10") // Set the viewBox for the marker shape
-            .attr("refX", 50) // Adjust this value (bubble radius + offset)
+            .attr("refX", 10) // Adjust this value (bubble radius + offset)
             .attr("refY", 5) // Center the marker vertically
             .attr("markerUnits", "strokeWidth")
             .attr("markerWidth", 9)
@@ -118,41 +88,61 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             .attr("d", "M 0 0 L 10 5 L 0 10 z") // A simple triangle shape
             .attr("fill", "#BBBBBB") // Set the color of the arrowhead
 
-
         const bubblesLayer = g.append("g")
 
         // Add nodes as bubbles
-        const bubbles = bubblesLayer
+        bubblesRef.current = bubblesLayer
             .selectAll("circle")
             .data(nodes)
             .join("circle")
-            .attr("fill", d => {
-                if (d.is_active === 'false' && d.delegator_count === 0)
-                    return "white"
-                else {
-                    const saturation = d3.interpolateRdYlGn(saturationScale(d.saturation_ratio))
-                    return saturation
-                }
-            })
-            // .call(drag(simulation))
-            .attr("fill-opacity", 1)
-            .attr("stroke", d => d.is_active === 'false' ? "red" : "white" )
-            .attr("stroke-opacity", 1)
-            .attr("stroke-width", d => (d.is_active === 'false' && d.delegator_count === 0) ? "4" : "1")
+            .attr("fill", d => !d.is_active && d.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", d => radiusScale(d.total_stake))
-            .on("mouseover", function(event, d) {
+            .on("mouseover", function (event, d) {
                 d3.select(this).style("cursor", "pointer")
-                //setSelectedElement([{"type": "pool", "data": d}])
                 })
-            .on("mouseout", function() {
-                //setSelectedElement(null)
-                //d3.select(this).attr("stroke", d => d.is_active === 'false' ? "red" : "white" ) 
-            })
-            .on("click", function(event, d) {
-                // If the clicked link is already selected, deselect it
-                setSelectedElement([{"type": "pool", "data": d}])
-                d3.select(this).attr("stroke", "yellow" )
-            })
+            .on("click", (event, d) => setSelectedElement({"type": "pool", "data": d}))
+            // .call(drag(simulation))
+        //     .attr("stroke", d => 
+        //         // d.is_active === 'false' ? "red" : "white"
+        //         {
+        //             if (selectedElement)
+        //                 return d.pool_id === selectedElement?.data?.pool_id
+        //                     ? "yellow"
+        //                     : d.is_active === 'false'
+        //                         ? "red"
+        //                         : "white"
+        //             else
+        //                 return d.is_active === 'false' ? "red" : "white"
+        //             //selectedElement && console.log(selectedElement.data)
+        //         // else
+        //         //     d.is_active === 'false' ? "red" : "white"
+        //     }
+        // )
+        //     .attr("stroke-width", d => {
+        //         if (selectedElement)
+        //                 return d.pool_id === selectedElement?.data?.pool_id
+        //                     ? "2"
+        //                     : (d.is_active === 'false' && d.delegator_count === 0)
+        //                         ? "4"
+        //                         : "1"
+        //             else
+        //                 return d.is_active === 'false' ? "red" : "white"
+        //         // (d.is_active === 'false' && d.delegator_count === 0) ? "4" : "1"
+        //     })
+            // .attr("r", d => radiusScale(d.total_stake))
+            // .on("mouseover", function(event, d) {
+            //     d3.select(this).style("cursor", "pointer")
+            //     })
+            // .on("click", function(event, d) {
+            //     // remove class on existing bubbles with style
+            //     connections.classed('selected', false)
+            //     //bubbles.classed('selected', false)
+
+            //     // add the selected class to the element that was clicked
+            //     setSelectedElement({"type": "pool", "data": d})
+            //     selectedElement && console.log(selectedElement.data)
+            //     //d3.select(this).classed('selected', true)
+            // })
 
         const retiredPoolLabels = svg.selectAll("text")
             .data(nodes.filter(d => d.is_active === 'false' && d.delegator_count !== 0))
@@ -164,7 +154,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.pool_id).distance(20)) // normalize
+            .force("link", d3.forceLink(links).id(d => d.pool_id).distance(0)) // normalize
             .force("charge", d3.forceManyBody().strength(-50))
             .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 10).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
@@ -172,36 +162,34 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             .force("y", d3.forceY().strength(0.05))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
-        bubbles.append("title").text(d => d.pool_id)
-        // bubbles.append("text").attr("x", d => d.x).attr("y", d => d.y).attr("fill", "black").attr("text-anchor", "middle").style("font-size", "100px").text(d => d.is_active ? '' : 'blah')
+        bubblesRef.current.append("title").text(d => d.pool_id)
 
         simulation.on("tick", () => {
-            
-            link
+
+            bubblesRef.current
+                .attr("cx", d => {
+                    // if (d.pool_id === 959)
+                        //console.log(d.x, d.y)
+                    return d.x}
+                )
+                .attr("cy", d => d.y)
+                
+            // Shorten links to not overlap with bubbles
+            linksRef.current
                 .attr("x1", d => d.source.x)
                 .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y)
-                
-                // Shorten links to not overlap with bubbles
-                // .attr("x2", d => {
-                //     const dx = d.target.x - d.source.x;
-                //     const dy = d.target.y - d.source.y;
-                //     const dist = Math.sqrt(dx * dx + dy * dy);
-                //     const offsetX = (dx * d.target.r) / dist; // shorten by target radius
-                //     return d.target.x - offsetX;
-                //     })
-                // .attr("y2", d => {
-                // const dx = d.target.x - d.source.x;
-                // const dy = d.target.y - d.source.y;
-                // const dist = Math.sqrt(dx * dx + dy * dy);
-                // const offsetY = (dy * d.target.r) / dist;
-                // return d.target.y - offsetY;
-                // })
-
-            bubbles
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
+                .attr("x2", d => {
+                    const dx = d.target.x - d.source.x
+                    const dy = d.target.y - d.source.y
+                    const dist = Math.hypot(dx, dy) || 1
+                    return d.target.x - (dx / dist) * d.target.radius
+                    })
+                .attr("y2", d => {
+                    const dx = d.target.x - d.source.x
+                    const dy = d.target.y - d.source.y
+                    const dist = Math.hypot(dx, dy) || 1
+                    return d.target.y - (dy / dist) * d.target.radius
+                })
 
             retiredPoolLabels
                 .attr("x", d => d.x)
@@ -212,29 +200,31 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             console.log("Simulation ended")
         })
 
+        return () => simulation.stop()
+
         // drag = simulation => {
   
         // function dragstarted(event, d) {
-        //     if (!event.active) simulation.alphaTarget(0.3).restart();
-        //     d.fx = d.x;
-        //     d.fy = d.y;
+        //     if (!event.active) simulation.alphaTarget(0.3).restart()
+        //     d.fx = d.x
+        //     d.fy = d.y
         // }
         
         // function dragged(event, d) {
-        //     d.fx = event.x;
-        //     d.fy = event.y;
+        //     d.fx = event.x
+        //     d.fy = event.y
         // }
         
         // function dragended(event, d) {
-        //     if (!event.active) simulation.alphaTarget(0);
-        //     d.fx = null;
-        //     d.fy = null;
+        //     if (!event.active) simulation.alphaTarget(0)
+        //     d.fx = null
+        //     d.fy = null
         // }
         
         // return d3.drag()
         //     .on("start", dragstarted)
         //     .on("drag", dragged)
-        //     .on("end", dragended);
+        //     .on("end", dragended)
         // }
 
         // const zoom = d3.zoom()
@@ -261,6 +251,51 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             //     //d3.select(window).on("mouseup.zoom-cursor", null)
             // }
      }, [nodes, nodeLinks])
+
+    useEffect(() => {
+
+        if (bubblesRef.current) {
+            bubblesRef.current
+                .attr("stroke", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? "yellow" : !d.is_active ? "red" : "white"
+                )
+                .attr("stroke-width", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? 3 : 1.5)
+        }
+        
+        if (linksRef.current) {
+            linksRef.current
+                .style("stroke", d => selectedElement?.type === "link" && 
+                    (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? "yellow" : "white")
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? 1.5 : 1)
+        }
+
+    }, [selectedElement, nodes, nodeLinks])
+
+    // Update selected element on epoch change. Get id of selected element, look again for data and set selected element
+    useEffect(() => {
+        if (!selectedElement) return
+
+        if (selectedElement.type === "pool") {
+            const newNode = nodes.find(p => p.pool_id === selectedElement.data.pool_id)
+            if (newNode) {
+            setSelectedElement({ type: "pool", data: newNode })
+            } else {
+            setSelectedElement(null)
+            }
+        }
+
+        if (selectedElement.type === "link") {
+            const newLink = nodeLinks.find(
+            l =>
+                l.source_pool_id === selectedElement.data.source_pool_id &&
+                l.destination_pool_id === selectedElement.data.destination_pool_id
+            )
+            if (newLink) {
+            setSelectedElement({ type: "link", data: newLink })
+            } else {
+            setSelectedElement(null)
+            }
+        }
+    }, [nodes, nodeLinks])
 
     return (
         <div className="relative flex flex-column items-center justify-center">
