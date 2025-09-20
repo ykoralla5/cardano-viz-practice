@@ -358,6 +358,18 @@ class MvEpochPoolStats(models.Model):
         app_label = 'api'
         unique_together = ['epoch_no', 'pool_id']
 
+class MvEpochPoolPerf(models.Model):
+    epoch_no = models.IntegerField(primary_key=True)
+    pool_id = models.BigIntegerField()
+    actual_blocks = models.IntegerField()
+    expected_blocks = models.FloatField()
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_pool_performance'
+        app_label = 'api'
+        unique_together = ['epoch_no', 'pool_id']
+
 class MvEpochParams(models.Model):
     epoch_no = models.IntegerField(primary_key=True)
     pledge_influence = models.FloatField()
@@ -367,4 +379,4 @@ class MvEpochParams(models.Model):
     class Meta:
         managed = False
         db_table = 'mv_epoch_params'
-        app_label = 'api' 
+        app_label = 'api'

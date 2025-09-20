@@ -32,6 +32,11 @@ class EpochPoolStatsSerializer(serializers.ModelSerializer):
         model = models.MvEpochPoolStats
         fields = '__all__'
 
+class EpochPoolPerfSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochPoolPerf
+        fields = '__all__'
+
 class EpochParamsSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.MvEpochParams

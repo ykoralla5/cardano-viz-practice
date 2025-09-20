@@ -21,7 +21,7 @@ def get_delegator_movement_counts_percents(epoch_number):
     delegator_movement_percents = models.MvEpochDelegationMovAmtCountsPercent.objects \
             .filter(epoch_no=epoch_number) \
             .values('epoch_no', 'source_pool_id', 'source_stake_change_percent', 'destination_pool_id', 'dest_stake_change_percent', 'movement_count', 'movement_amount')    
-    logger.info(f"Delegator movement counts and amounts by stake change percents for epoch {epoch_number} retrieved")
+    logger.info(f"Delegator movement counts and amounts by stake change percents for epoch {epoch_number} retrieved.")
     return delegator_movement_percents
 
 # Helper function
@@ -29,15 +29,23 @@ def get_pool_stats(epoch_number):
     pool_stats = models.MvEpochPoolStats.objects \
             .filter(epoch_no=epoch_number) \
             .values('epoch_no', 'pool_id', 'pool_view', 'total_stake', 'delegator_count', 'pledge', 'is_active', 'saturation_ratio')
-    logger.info(f"Pool stats for epoch {epoch_number} retrieved")
+    logger.info(f"Pool stats for epoch {epoch_number} retrieved.")
     return pool_stats
+
+# Helper function
+def get_epoch_pool_perf(epoch_number):
+    epoch_params = models.MvEpochPoolPerf.objects \
+            .filter(epoch_no=epoch_number) \
+            .values('epoch_no', 'pool_id', 'actual_blocks', 'expected_blocks')
+    logger.info(f"Pool performance values for epoch {epoch_number} retrieved.")
+    return epoch_params
 
 # Helper function
 def get_epoch_params(epoch_number):
     epoch_params = models.MvEpochParams.objects \
             .filter(epoch_no=epoch_number) \
             .values('epoch_no', 'pledge_influence', 'decentralisation', 'saturation_point')
-    logger.info(f"Epoch params for epoch {epoch_number} retrieved")
+    logger.info(f"Epoch params for epoch {epoch_number} retrieved.")
     return epoch_params
 
 # Helper function
@@ -78,6 +86,11 @@ def get_epoch_snapshot(request):
     pool_stats_ser = serializers.EpochPoolStatsSerializer(pool_stats, many=True)
     pool_stats_data = pool_stats_ser.data
 
+    # Pool performances
+    pool_perf = get_epoch_pool_perf(epoch_number)
+    pool_perf_ser = serializers.EpochPoolPerfSerializer(pool_perf, many=True)
+    pool_perf_data = list(pool_perf_ser.data)
+
     # Epoch parameters
     epoch_params = get_epoch_params(epoch_number)
     epoch_params_ser = serializers.EpochParamsSerializer(epoch_params, many=True)
@@ -110,6 +123,12 @@ def get_epoch_snapshot(request):
             missing_data[i]['pool_view'], missing_data[i]['delegator_count'], missing_data[i]['pledge'], missing_data[i]['is_active'], missing_data[i]['saturation_ratio'] = pool_view['view'], 0, 0, False, 0
 
         pool_data_final.append(missing_data[0])
+
+    actual_blocks = {item['pool_id']: item['actual_blocks'] for item in pool_perf_data}
+    expected_blocks = {item['pool_id']: item['expected_blocks'] for item in pool_perf_data}
+    for i in pool_data_final:
+        i['actual_blocks'] = actual_blocks.get(i['pool_id'], 0)
+        i['expected_blocks'] = expected_blocks.get(i['pool_id'], 0.00)
 
     # Merge data
     combined = []

@@ -18,24 +18,24 @@ export default function InfoPanel({ selectedElement, setSelectedElement }) {
         const type = selectedElement.type
         if (type === "link")
             return <>
-                        <p><strong>Link Information</strong></p>
-                        <p>From Pool: {data.source.pool_id} ({data.source.pool_view})</p>
-                        <p>To Pool: {data.target.pool_id} ({data.target.pool_view})</p>
-                        <p>Movement Amount: {formatAda(data.movement_amount)}</p>
-                        <p>Movement Count: {data.movement_count}</p>
-                        <p>Stake change in source pool: <span className="text-red-500 font-medium">{data.source_stake_change_percent} %</span></p>
-                        <p>Stake change in destination: <span className="text-green-500 font-medium">{data.dest_stake_change_percent} %</span></p>
+                    <p className="text-lg font-bold">Link Information</p>
+                    <p>From Pool: {data.source.pool_id} ({data.source.pool_view})</p>
+                    <p>To Pool: {data.target.pool_id} ({data.target.pool_view})</p>
+                    <p>Movement Amount: {formatAda(data.movement_amount)}</p>
+                    <p>Movement Count: {data.movement_count}</p>
+                    <p>Stake change in source pool: <span className="text-red-500 font-medium">{data.source_stake_change_percent} %</span></p>
+                    <p>Stake change in destination: <span className="text-green-500 font-medium">{data.dest_stake_change_percent} %</span></p>
                     </>
         else if (type === "pool")
             return <>
-                    <p><strong>Pool Information</strong></p>
+                    <p className="text-lg font-bold">Pool Information</p>
                     <p>Pool id: {data.pool_id}</p>
                     <p>Pool view: {data.pool_view}</p>
-                    <p>Pool Stake: {formatAda(data.total_stake)}</p>
+                    <p>Pool Stake: {!data.is_active && data.delegator_count === 0 ? formatAda(data.total_stake) + ' !Stake from previous epoch!' : formatAda(data.total_stake)}</p>
                     <p># of delegators: {data.delegator_count}</p>
                     <p>Operator pledge: {formatAda(data.pledge)}</p>
                     <p>Saturation ratio: {Math.round(data.saturation_ratio * 100) / 100}</p>
-                    <p>Actual / Expected # of blocks minted: {data.actual_block_count}  {data.expected_block_count}</p>
+                    <p>Actual / Expected # of blocks minted: {data.actual_blocks} / {data.expected_blocks} ({Math.round(data.actual_blocks/data.expected_blocks*100)/100})</p>
                     <p>Performance: {data.performance_ratio}</p>
                     <p>Is active: {data.is_active.toString()}</p>
                 </>

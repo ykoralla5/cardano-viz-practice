@@ -13,6 +13,7 @@ export default function BubbleMap() {
     const [rawData, setRawData] = useState(null)
     const [poolData, setPoolData] = useState([])
     const [movementData, setMovementData] = useState([])
+    const [performanceData, setPerformanceData] = useState([])
     const [epochParamData, setEpochParamData] = useState([])
     const [selectedElement, setSelectedElement] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -36,8 +37,9 @@ export default function BubbleMap() {
             const response = await fetchPoolData(filters.epoch)
             setRawData(response)
             setMovementData(response[0]['delegator_movement_counts'])
-            setEpochParamData(response[0]['epoch_params'])
             setPoolData(response[0]['pool_stats'])
+            setPerformanceData(response[0]['pool_performance'])
+            setEpochParamData(response[0]['epoch_params'])
             setEpochRange(response[0]['min_max_epoch'])
             }
         catch (err) {

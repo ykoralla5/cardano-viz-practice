@@ -171,7 +171,7 @@ mv_epoch_delegation_percent_change:
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
-mv_epoch_delegation_movements: shows delegation movements made from previous epoch
+mv_epoch_delegation_movements: shows EFFECTIVE delegation movements made from previous epoch
 
     SELECT
         curr_epoch.epoch_no,
@@ -193,6 +193,49 @@ mv_epoch_delegation_movements: shows delegation movements made from previous epo
     ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
 
     CREATE UNIQUE INDEX unique_mv_epoch_del_mov ON mv_epoch_delegation_movements (epoch_no, addr_id);
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+mv_epoch_delegation_movements_granular: shows delegation movements slot-wise
+
+    WITH delegation_with_prev AS (
+    SELECT
+        d.id AS delegation_id,
+        d.addr_id,
+        d.pool_hash_id AS dest_pool_id,
+        tx.id AS tx_id,
+        b.epoch_no,
+        b.slot_no,
+        tx.hash AS tx_hash,
+        LAG(d.pool_hash_id) OVER (
+            PARTITION BY d.addr_id
+            ORDER BY b.time, tx.id
+        ) AS prev_pool_id
+    FROM delegation d
+    JOIN tx ON tx.id = d.tx_id
+    JOIN block b ON b.id = tx.block_id
+    )
+    SELECT
+        dw.epoch_no,
+        dw.slot_no,
+        dw.tx_id,
+        dw.addr_id AS delegator_id,
+        dw.prev_pool_id AS source_pool_id,
+        dw.dest_pool_id AS destination_pool_id,
+        CASE
+            WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN 'NEW_STAKE'
+            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN 'UNDELEGATED'
+            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL
+                AND dw.prev_pool_id <> dw.dest_pool_id THEN 'REDELEGATION'
+            ELSE 'NO_CHANGE'
+        END AS movement_type
+    FROM delegation_with_prev dw
+    ORDER BY dw.epoch_no, dw.slot_no;
+
+    CREATE INDEX idx_mv_epoch_slot ON mv_epoch_delegation_movements_granular (epoch_no, slot_no);
+
+    CREATE INDEX idx_mv_delegator ON mv_epoch_delegation_movements_granular (delegator_id);
+
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
@@ -264,6 +307,52 @@ mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ra
     JOIN total_epoch_stake tes ON teb.epoch_no = ep.epoch_no
     JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
     LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id;
+
+    V3: 
+    WITH pool_stats AS (
+    SELECT
+        epoch_no,
+        pool_id,
+        SUM(amount) AS pool_stake,
+        SUM(SUM(amount)) OVER (PARTITION BY epoch_no) AS total_stake
+    FROM
+        epoch_stake
+    GROUP BY
+        epoch_no, pool_id
+    ),
+    total_epoch_slots AS (
+	        SELECT epoch_no, COUNT(block_no) AS total_active_slots FROM block GROUP BY epoch_no
+    ),
+    block_stats AS (
+        SELECT
+            b.epoch_no,
+            sl.pool_hash_id AS pool_id,
+            COUNT(b.id) AS actual_blocks
+        FROM
+            block b
+        JOIN
+            slot_leader sl ON sl.id = b.slot_leader_id
+        WHERE
+            sl.pool_hash_id IS NOT NULL
+        GROUP BY
+            b.epoch_no, sl.pool_hash_id
+        )
+        SELECT
+            ps.epoch_no,
+            ps.pool_id,
+            COALESCE(bs.actual_blocks, 0) AS actual_blocks,
+            ROUND(
+                (tes.total_active_slots::numeric * (1 - ep.decentralisation::numeric) * ps.pool_stake::numeric) / NULLIF(ps.total_stake::numeric, 0),
+                5
+            ) AS expected_blocks
+        FROM
+            pool_stats ps
+        JOIN
+            epoch_param ep ON ep.epoch_no = ps.epoch_no
+        JOIN
+            total_epoch_slots tes ON tes.epoch_no = ps.epoch_no
+        LEFT JOIN
+            block_stats bs ON bs.epoch_no = ps.epoch_no AND bs.pool_id = ps.pool_id;
 
     CREATE UNIQUE INDEX ON mv_epoch_pool_performance (epoch_no, pool_id);
 
