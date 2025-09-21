@@ -129,6 +129,7 @@ def get_epoch_snapshot(request):
     for i in pool_data_final:
         i['actual_blocks'] = actual_blocks.get(i['pool_id'], 0)
         i['expected_blocks'] = expected_blocks.get(i['pool_id'], 0.00)
+        i['performance_ratio'] = utils.safe_divide(i['actual_blocks'], i['expected_blocks'])
 
     # Merge data
     combined = []

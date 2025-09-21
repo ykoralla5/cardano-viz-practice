@@ -35,8 +35,8 @@ export default function InfoPanel({ selectedElement, setSelectedElement }) {
                     <p># of delegators: {data.delegator_count}</p>
                     <p>Operator pledge: {formatAda(data.pledge)}</p>
                     <p>Saturation ratio: {Math.round(data.saturation_ratio * 100) / 100}</p>
-                    <p>Actual / Expected # of blocks minted: {data.actual_blocks} / {data.expected_blocks} ({Math.round(data.actual_blocks/data.expected_blocks*100)/100})</p>
-                    <p>Performance: {data.performance_ratio}</p>
+                    <p>Actual / Expected # of blocks minted: {data.actual_blocks} / {data.expected_blocks}</p>
+                    <p className={data.performance_ratio < 1 ? 'text-red-500' : 'text-green-500'}>Performance: {Math.round(data.performance_ratio * 100) / 100}</p>
                     <p>Is active: {data.is_active.toString()}</p>
                 </>
     }, [selectedElement])

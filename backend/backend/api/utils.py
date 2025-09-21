@@ -17,3 +17,9 @@ def validate_epoch(epoch_param):
         return JsonResponse({'Error': f'Epoch provided is before Shelley era and has no decentralisation mechanisms. Provide an epoch number less than {MIN_EPOCH}'}, status=400)
     
     return epoch_number
+
+def safe_divide(a, b):
+    try:
+        return a / b if b != 0 else 0
+    except TypeError:
+        return 0
