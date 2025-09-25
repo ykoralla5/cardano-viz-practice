@@ -232,9 +232,40 @@ mv_epoch_delegation_movements_granular: shows delegation movements slot-wise
     FROM delegation_with_prev dw
     ORDER BY dw.epoch_no, dw.slot_no;
 
+    V2: WITH delegation_with_prev AS (
+         SELECT d.id AS delegation_id,
+            d.addr_id,
+            d.pool_hash_id AS dest_pool_id,
+            tx.id AS tx_id,
+            b.epoch_no,
+            b.slot_no,
+            tx.hash AS tx_hash,
+            lag(d.pool_hash_id) OVER (PARTITION BY d.addr_id ORDER BY b."time", tx.id) AS prev_pool_id
+           FROM delegation d
+             JOIN tx ON tx.id = d.tx_id
+             JOIN block b ON b.id = tx.block_id
+        )
+ SELECT dw.epoch_no,
+    dw.slot_no,
+    dw.tx_id,
+    dw.addr_id,
+    dw.prev_pool_id AS source_pool_id,
+    dw.dest_pool_id AS destination_pool_id,
+    es_prev.amount,
+        CASE
+            WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN 'NEW_STAKE'::text
+            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN 'UNDELEGATED'::text
+            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id THEN 'REDELEGATION'::text
+            ELSE 'NO_CHANGE'::text
+        END AS movement_type
+   FROM delegation_with_prev dw
+     LEFT JOIN LATERAL (SELECT es.amount FROM epoch_stake es WHERE es.addr_id = dw.addr_id AND es.epoch_no < dw.epoch_no ORDER BY es.epoch_no DESC
+    LIMIT 1) es_prev ON true
+  ORDER BY dw.epoch_no, dw.slot_no;
+
     CREATE INDEX idx_mv_epoch_slot ON mv_epoch_delegation_movements_granular (epoch_no, slot_no);
 
-    CREATE INDEX idx_mv_delegator ON mv_epoch_delegation_movements_granular (delegator_id);
+    CREATE INDEX idx_mv_delegator ON mv_epoch_delegation_movements_granular (addr_id);
 
 
 ---------------------------------------------------------------------------------------------------------------------------------

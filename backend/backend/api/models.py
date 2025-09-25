@@ -278,6 +278,29 @@ class Tx(models.Model):
         db_table = 'tx'
         app_label = 'api'
 
+# class Tx_in(models.Model):
+#     id = models.BigAutoField(primary_key=True)
+#     tx_in_id = models.BigIntegerField()
+#     tx_out_id = models.BigIntegerField()
+#     redeemer_id = models.BigIntegerField()
+
+#     class Meta:
+#         managed = False
+#         db_table = 'tx_in'
+#         app_label = 'api'
+
+# class Tx_out(models.Model):
+#     id = models.BigAutoField(primary_key=True)
+#     tx_id = models.BigIntegerField()
+#     address = models.CharField()
+#     stake_address_id = models.BigIntegerField()
+#     value = models.DecimalField(max_digits=20, decimal_places=0)
+    
+#     class Meta:
+#         managed = False
+#         db_table = 'tx_out'
+#         app_label = 'api'
+
 class MvEpochDelegatorStake2(models.Model):
     epoch_no = models.IntegerField()
     pool_id = models.BigIntegerField()
@@ -309,6 +332,27 @@ class MvEpochDelegationMovements(models.Model):
         db_table = 'mv_epoch_delegation_movements'
         app_label = 'api'
         unique_together = ['epoch_no', 'addr_id']
+
+class MvEpochDelegationMovementsGran(models.Model):
+    MOVEMENT_CHOICES = [
+        ('NEW_STAKE', 'New Stake'),
+        ('UNDELEGATED', 'Undelegated'),
+        ('REDELEGATION', 'Redelegation'),
+        ('NO_CHANGE', 'No Change'),
+    ]
+    epoch_no = models.IntegerField()
+    slot_no = models.BigIntegerField()
+    tx_id = models.BigIntegerField(primary_key=True)
+    addr_id = models.BigIntegerField()
+    source_pool_id = models.BigIntegerField()
+    destination_pool_id = models.BigIntegerField()
+    movement_type = models.CharField(max_length=12, choices=MOVEMENT_CHOICES)
+    amount = models.DecimalField(max_digits=20, decimal_places=0)
+
+    class Meta:
+        managed = False
+        db_table = 'mv_epoch_delegation_movements_granular'
+        app_label = 'api'
 
 class MvEpochDelegationMovAmountCounts(models.Model):
     epoch_no = models.IntegerField()

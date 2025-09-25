@@ -37,7 +37,8 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             source: p.source_pool_id,
             target: p.destination_pool_id,
             value: p.movement_count,
-            movement_amount: p.movement_amount,
+            movement_amount: p.amount,
+            movement_type: p.movement_type,
             source_stake_change_percent: p.source_stake_change_percent,
             dest_stake_change_percent: p.dest_stake_change_percent
             })

@@ -36,7 +36,7 @@ export default function BubbleMap() {
             // Make API call
             const response = await fetchPoolData(filters.epoch)
             setRawData(response)
-            setMovementData(response[0]['delegator_movement_counts'])
+            setMovementData(response[0]['delegation_movements'])
             setPoolData(response[0]['pool_stats'])
             setPerformanceData(response[0]['pool_performance'])
             setEpochParamData(response[0]['epoch_params'])

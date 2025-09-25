@@ -22,13 +22,14 @@ export default function InfoPanel({ selectedElement, setSelectedElement }) {
                     <p>From Pool: {data.source.pool_id} ({data.source.pool_view})</p>
                     <p>To Pool: {data.target.pool_id} ({data.target.pool_view})</p>
                     <p>Movement Amount: {formatAda(data.movement_amount)}</p>
-                    <p>Movement Count: {data.movement_count}</p>
-                    <p>Stake change in source pool: <span className="text-red-500 font-medium">{data.source_stake_change_percent} %</span></p>
+                    <p>Movement Type: {data.movement_type}</p>
+                    <p>Stake change in source pool: <span className="text-red-500 font-medium">-{data.source_stake_change_percent} %</span></p>
                     <p>Stake change in destination: <span className="text-green-500 font-medium">{data.dest_stake_change_percent} %</span></p>
-                    </>
+                </>
         else if (type === "pool")
             return <>
                     <p className="text-lg font-bold">Pool Information</p>
+                    <p className="text-tiny">Information shown here is for this epoch</p>
                     <p>Pool id: {data.pool_id}</p>
                     <p>Pool view: {data.pool_view}</p>
                     <p>Pool Stake: {!data.is_active && data.delegator_count === 0 ? formatAda(data.total_stake) + ' !Stake from previous epoch!' : formatAda(data.total_stake)}</p>
@@ -36,7 +37,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement }) {
                     <p>Operator pledge: {formatAda(data.pledge)}</p>
                     <p>Saturation ratio: {Math.round(data.saturation_ratio * 100) / 100}</p>
                     <p>Actual / Expected # of blocks minted: {data.actual_blocks} / {data.expected_blocks}</p>
-                    <p className={data.performance_ratio < 1 ? 'text-red-500' : 'text-green-500'}>Performance: {Math.round(data.performance_ratio * 100) / 100}</p>
+                    <p className={data.performance_ratio < 1 ? "text-red-500" : "text-green-500"}>Performance: {Math.round(data.performance_ratio * 100) / 100}</p>
                     <p>Is active: {data.is_active.toString()}</p>
                 </>
     }, [selectedElement])

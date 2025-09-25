@@ -11,6 +11,11 @@ class EpochDelegatorsMovSerializer(serializers.ModelSerializer):
         model = models.MvEpochDelegationMovements
         fields = '__all__'
 
+class EpochDelegatorsMovGranSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.MvEpochDelegationMovementsGran
+        fields = '__all__'    
+
 class EpochDelegatorsMovCountSerializer(serializers.Serializer):
     epoch_no = serializers.IntegerField()
     pool1 = serializers.IntegerField()
