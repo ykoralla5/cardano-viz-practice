@@ -3,25 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
+@layer base {
+  *, *::before, *::after {
   box-sizing: border-box;
 }
 
-@layer base {
   body {
-  margin: 0;
-  font-family: "Hanken Grotesk", Arial, sans-serif;
-  /* background-color: #262626; */
-  color: #D9D9D9;
-  /* padding: 20px;
-  height: 100vh; */
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  --color-background: white;
+  --text-color: grey-900;
+
+  @apply font-sans bg-[--color-background] text-[--text-color] transition-colors duration-300;
 }
 
   p, label {
-    @apply text-sm
+    @apply text-base
   }
 
   main {
@@ -31,29 +26,37 @@
     align-items: center;
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-gray-800 dark:text-gray-800;
+  }
+
   h1 {
-    @apply text-3xl font-bold text-gray-800 dark:text-white;
+    @apply text-3xl
+  }
+
+  html, body, #root {
+    @apply h-full w-full;
   }
 
   section {
-    margin-block: 12.5px;
+    @apply my-3;
   }
 }
 
 @theme {
-  --font-display: "Oswald", sans-serif;
-  --text-tiny: 0.625rem; 
-  --text-sm: 0.875rem; 
-  --text-base: 1rem; 
-  --text-lg: 1.125rem; 
-  --text-xl: 1.25rem; 
-  --text-2xl: 1.5rem; 
-  --text-3xl: 1.875rem; 
-  --text-4xl: 2rem; 
-  --text-5xl: 3rem; 
-  --text-6xl: 3.75rem; 
-  --text-7xl: 4.5rem; 
-  --text-8xl: 6rem; 
+  /* --font-display: "Poppins", sans-serif; */
+  --text-tiny: 0.625rem;
+  --text-sm: 0.875rem;
+  --text-base: 0.95rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-7xl: 4.5rem;
+  --text-8xl: 6rem;
   --text-9xl: 8rem;
   --color-background: white;
   --text-color: grey-900;
@@ -72,25 +75,28 @@
 }
 
 @layer components {
-  section.bubble-map {
-  height: 90vh;
-  width: 100vw;
-}
-}
-
-html, body, #root {
-  width:100%; 
-  height:100%;
-}
-
-/* line {
-  stroke-width: 1;
-  stroke: white;
+  /* .chart-content {
+  @apply h-[90vh] w-screen
 } */
 
-/* line.selected {
-  stroke: yellow;
-} */
+  .t-slider {
+    & .rc-slider {
+    @apply h-2!;
+  }
+
+  & .rc-slider-rail {
+    @apply h-2! bg-gray-500 dark:bg-gray-200!;
+  }
+
+  & .rc-slider-track {
+    @apply h-2! bg-blue-500! dark:bg-teal-600!;
+  }
+
+  & .rc-slider-handle {
+    @apply w-5! h-5! bg-teal-300! border-teal-300!;
+  }
+  }
+}
 
 circle {
   fill-opacity: 1;

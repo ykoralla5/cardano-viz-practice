@@ -144,11 +144,18 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
 
         # Merge Pool performances
         pool_perf_qs = get_epoch_pool_perf(epoch_number)
-
         pool_perf_dict = {p['pool_id']: p for p in pool_perf_qs}
+
+        # Merge pool name, ticker, homepage and description
+        pool_offchain_data_qs = models.OffChainPoolData.objects.filter(pool_id__in=pool_stats_dict.keys()).values('pool_id','json')
+        pool_offchain_data_dict = {p['pool_id']: p['json'] for p in pool_offchain_data_qs}
 
         # Append performance data to pools
         for i in pool_stats:
+            i['name'] = pool_offchain_data_dict.get(i['pool_id'], {}).get('name', 0)
+            i['ticker'] = pool_offchain_data_dict.get(i['pool_id'], {}).get('ticker', 0)
+            i['homepage'] = pool_offchain_data_dict.get(i['pool_id'], {}).get('homepage', 0)
+            i['description'] = pool_offchain_data_dict.get(i['pool_id'], {}).get('description', 0)
             i['actual_blocks'] = pool_perf_dict.get(i['pool_id'], {}).get('actual_blocks', 0)
             i['expected_blocks'] = pool_perf_dict.get(i['pool_id'], {}).get('expected_blocks', 0)
             i['performance_ratio'] = utils.safe_divide(i['actual_blocks'], i['expected_blocks'])
@@ -161,7 +168,7 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
 # Helper function
 def get_epoch_pool_perf(epoch_number):
     """
-    Get number of blocks minted and expected number of blocks minted from MV. 
+    Get number of blocks minted and expected number of blocks minted from MV.
     """
     start_time = time.time()
     epoch_params_qs = models.MvEpochPoolPerf.objects \
@@ -175,7 +182,7 @@ def get_epoch_pool_perf(epoch_number):
 # Helper function
 def get_epoch_params(epoch_number):
     """
-    Get network parameters set for this epoch from MV. 
+    Get network parameters set for this epoch from MV.
     """
     start_time = time.time()
     epoch_params_qs = models.MvEpochParams.objects \

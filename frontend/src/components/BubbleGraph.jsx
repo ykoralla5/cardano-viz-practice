@@ -3,19 +3,19 @@ import { Children, useEffect, useRef, useState, useMemo } from 'react'
 import { CircleLoader } from 'react-spinners'
 
 /* Generate bubble map */
-export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturationScale, dimensions, selectedElement, setSelectedElement })
+export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, selectedElement, setSelectedElement })
  {
+    // Scales
+    const radiusScale = scales.radiusScale
+    const saturationScale = scales.saturationScale
+    const linkTransparencyScale = scales.linkTransparencyScale
+    const linkWidthScale = scales.linkWidthScale
+    const saturationPercentScale = scales.saturationPercentScale
+
+    // Refs
     const svgReference = useRef(null)
     const bubblesRef = useRef(null)
     const linksRef = useRef(null)
-
-    // Color scale
-    const color = d3.scaleOrdinal(d3.schemeCategory10)
-    const colorInterpolator = d3.interpolateSpectral
-
-    const colorScale = d3.scaleSequential(d3.interpolateReds)
-        .domain([1, 100]) // min & max of your values
-
 
     useEffect(() => {
 
@@ -25,24 +25,23 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
         const movementAmountMin = d3.min(movementAmounts)
         const movementAmountMax = d3.max(movementAmounts)
 
-        // const linkWidthScale = d3.scaleSqrt()
-        //     .domain([movementAmountMin, movementAmountMax])
-        //     .range([1, 5])
-
         const chargeScale = d3.scaleSqrt()
             .domain([movementAmountMin, movementAmountMax])
             .range([-100, 100])
-
-        const links = nodeLinks.map(p => ({
-            source: p.source_pool_id,
-            target: p.destination_pool_id,
-            value: p.movement_count,
-            movement_amount: p.amount,
-            movement_type: p.movement_type,
-            source_stake_change_percent: p.source_stake_change_percent,
-            dest_stake_change_percent: p.dest_stake_change_percent
-            })
-        )
+            
+        // Prepare data
+        const links = nodeLinks
+            .filter(p => p.movement_type === 'REDELEGATION') // Show only redelegations on visualization
+            .map(p => ({
+                source: p.source_pool_id,
+                target: p.destination_pool_id,
+                value: p.movement_count,
+                movement_amount: p.amount,
+                movement_type: p.movement_type,
+                source_stake_change_percent: p.source_stake_change_percent,
+                dest_stake_change_percent: p.dest_stake_change_percent
+                })
+            )
 
         // Clear SVG before render
         d3.select(svgReference.current).selectAll('*').remove() // Clear previous svg renders
@@ -53,7 +52,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
 
         svg.call(
             d3.zoom()
-                .scaleExtent([0.5, 3]) // min/max zoom
+                .scaleExtent([0.25, 5]) // min/max zoom
                 .on("zoom", (event) => {
                     g.attr("transform", event.transform)
                 })
@@ -68,6 +67,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             //.join("line")
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
+            .attr("stroke-opacity", d => linkTransparencyScale(d.movement_amount)) 
             .on("mouseover", function(event, d) {
                 d3.select(this).style("cursor", "pointer")
                 // d3.select(this).attr("stroke", "yellow")
@@ -157,22 +157,18 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.pool_id).distance(0)) // normalize
             .force("charge", d3.forceManyBody().strength(-50))
-            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 10).iterations(2)) // to prevent bubbles from overlapping
+            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 20).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
             .force("x", d3.forceX().strength(0.05))
             .force("y", d3.forceY().strength(0.05))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
-        bubblesRef.current.append("title").text(d => d.pool_id)
+        bubblesRef.current.append("title").text(d => saturationPercentScale(d.saturation_ratio))
 
         simulation.on("tick", () => {
 
             bubblesRef.current
-                .attr("cx", d => {
-                    // if (d.pool_id === 959)
-                        //console.log(d.x, d.y)
-                    return d.x}
-                )
+                .attr("cx", d => d.x)
                 .attr("cy", d => d.y)
                 
             // Shorten links to not overlap with bubbles
@@ -202,59 +198,11 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
         })
 
         return () => simulation.stop()
-
-        // drag = simulation => {
-  
-        // function dragstarted(event, d) {
-        //     if (!event.active) simulation.alphaTarget(0.3).restart()
-        //     d.fx = d.x
-        //     d.fy = d.y
-        // }
-        
-        // function dragged(event, d) {
-        //     d.fx = event.x
-        //     d.fy = event.y
-        // }
-        
-        // function dragended(event, d) {
-        //     if (!event.active) simulation.alphaTarget(0)
-        //     d.fx = null
-        //     d.fy = null
-        // }
-        
-        // return d3.drag()
-        //     .on("start", dragstarted)
-        //     .on("drag", dragged)
-        //     .on("end", dragended)
-        // }
-
-        // const zoom = d3.zoom()
-        //     .scaleExtent([0.2, 4])
-        //     .filter(event => {
-        //         if (event.type === "wheel") return event.ctrlKey
-        //         return event.type === "mousedown" || event.type === "touchstart" || event.type === "pointerdown"
-        //     })
-        //     .on("zoom", (event) => {
-        //         container.attr("transform", event.transform)
-        //     })
-
-        //     svg.call(zoom)
-        //         .attr("width", dimensions.width)
-        //         .attr("height", dimensions.height)
-        //         .style("cursor", "grab")
-        //         .on("mousedown.zoom", null)
-
-            // return () => {
-            //     simulation.stop()
-            //     d3.select(svgReference.current).selectAll('*').remove()
-            //     //svgReference.current = null
-            //     //svg.on(".zoom", null)
-            //     //d3.select(window).on("mouseup.zoom-cursor", null)
-            // }
      }, [nodes, nodeLinks])
 
     useEffect(() => {
 
+        // Handling selected element styling
         if (bubblesRef.current) {
             bubblesRef.current
                 .attr("stroke", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? "yellow" : !d.is_active ? "red" : "white"
@@ -266,7 +214,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
             linksRef.current
                 .style("stroke", d => selectedElement?.type === "link" && 
                     (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? "yellow" : "white")
-                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? 1.5 : 1)
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
         }
 
     }, [selectedElement, nodes, nodeLinks])
@@ -300,7 +248,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, radiusScale, saturation
 
     return (
         <div className="relative flex flex-column items-center justify-center">
-            <svg ref={svgReference} width={dimensions.width} height={dimensions.height}>
+            <svg className="h-[90vh]" ref={svgReference} width={dimensions.width} height={dimensions.height}>
                 <g className="chart-content"></g>
             </svg>
         </div> 

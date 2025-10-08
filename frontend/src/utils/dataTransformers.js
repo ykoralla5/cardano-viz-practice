@@ -1,5 +1,46 @@
 // Format amount in lovelaces to ADA with specified decimal places
-export function formatAda(amount, decimals) {
-    return (amount / 1000000).toLocaleString('de-CH', { maximumFractionDigits: decimals }) + ' ADA'
+export function formatAda(lovelace) {
+    var ada = lovelace / 1000000
+    var parts = ada.toFixed(0).toString().split(".")
+    var formattedAda = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+    return formattedAda
 }
 
+/**
+     * Convert Cardano slot number to a Date object
+     * @param {number} slot - The slot number from block
+     * @param {number} daysPerEpoch - Number of days per epoch (default: 5 for mainnet)
+     * @param {number} slotDuration - Duration of each slot in seconds (default: 1 for Shelley era, 20 in Byron)
+     * @param {Date|string|number} startTimestamp - UNIX timestamp of start of Shelley era (default: 1506203091 for mainnet)
+     * @param {number} startSlot - Slot number of start of Shelley era (default: 4924800 for mainnet)
+     * @returns {Date} Timestamp of the slot
+*/
+export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTimestamp = 1596491091, startSlot = 4924800) {
+    const epochDelay = 2 // Since we are showing active stake from 2 epochs ago
+    const slotsPerEpoch = daysPerEpoch * 24 * 60 * 60 / slotDuration // 432000
+    
+    // Adjust startTimestamp to account for epoch delay
+    startTimestamp += epochDelay * slotsPerEpoch * slotDuration
+
+    // Validate input slot to ensure it's not before Shelley era
+     if (slot < startSlot) {
+        console.error(`Error: Slot ${slot} is before the Shelley era start slot (${startSlot}).`)
+        return null
+    }
+
+    const timestamp = startTimestamp + (slot - startSlot)
+    const date = new Intl.DateTimeFormat('en-GB', {
+        // year: 'numeric',
+        // month: '2-digit',
+        // day: '2-digit',
+        // hour: '2-digit',
+        // minute: '2-digit',
+        // second: '2-digit',
+        // hour12: false,
+        dateStyle: 'full',
+        timeStyle: 'long',
+        timeZone: 'UTC'
+    }).format(new Date(timestamp * 1000)) // Convert to milliseconds
+
+    return date
+}

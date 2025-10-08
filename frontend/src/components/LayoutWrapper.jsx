@@ -1,9 +1,10 @@
 import { Children, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import BubbleGraph from "./BubbleGraph"
 import InfoPanel from '../components/InfoPanel'
+import { timeDay } from "d3"
 
 /* Direct container of the bubble map */
-export default function LayoutWrapper({ nodes, nodeLinks, radiusScale, saturationScale, selectedElement, setSelectedElement }) 
+export default function LayoutWrapper({ nodes, nodeLinks, scales, selectedElement, setSelectedElement }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
@@ -43,7 +44,7 @@ export default function LayoutWrapper({ nodes, nodeLinks, radiusScale, saturatio
             <BubbleGraph 
                 nodes={nodes}
                 nodeLinks={nodeLinks}
-                radiusScale={radiusScale} saturationScale={saturationScale}
+                scales={scales}
                 dimensions={{'width': dimensions.width, 'height': dimensions.height}}
                 selectedElement={selectedElement}
                 setSelectedElement={setSelectedElement}
