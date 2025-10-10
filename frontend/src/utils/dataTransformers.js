@@ -1,8 +1,13 @@
-// Format amount in lovelaces to ADA with specified decimal places
+/**
+ * Format amount in lovelaces to ADA with thousands separator
+ * @param {number} lovelace - Amount in lovelaces 
+ * @returns {string} Formatted amount in ADA with thousands separator
+ */
 export function formatAda(lovelace) {
     var ada = lovelace / 1000000
     var parts = ada.toFixed(0).toString().split(".")
     var formattedAda = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+    
     return formattedAda
 }
 

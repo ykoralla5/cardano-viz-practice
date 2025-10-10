@@ -217,9 +217,8 @@ export default function BubbleMap() {
                             scales={{ 'radiusScale': radiusScale, 'saturationScale': saturationScale, 'linkTransparencyScale': linkTransparencyScale, 'linkWidthScale': linkWidthScale, 'saturationPercentScale': saturationPercentScale }}
                             selectedElement={selectedElement}
                             setSelectedElement={setSelectedElement} />
-                        <InfoPanel selectedElement={selectedElement} setSelectedElement={setSelectedElement}
-                        />
                     </section>
+                    <InfoPanel selectedElement={selectedElement} setSelectedElement={setSelectedElement} />
                 </>
             )}
             {isLoading && (

@@ -1,7 +1,5 @@
 import { Children, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import BubbleGraph from "./BubbleGraph"
-import InfoPanel from '../components/InfoPanel'
-import { timeDay } from "d3"
 
 /* Direct container of the bubble map */
 export default function LayoutWrapper({ nodes, nodeLinks, scales, selectedElement, setSelectedElement }) 

@@ -33,6 +33,7 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
         const links = nodeLinks
             .filter(p => p.movement_type === 'REDELEGATION') // Show only redelegations on visualization
             .map(p => ({
+                slot_no: p.slot_no,
                 source: p.source_pool_id,
                 target: p.destination_pool_id,
                 value: p.movement_count,
@@ -64,14 +65,10 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
         linksRef.current = linksLayer
             .selectAll("line")
             .data(links)
-            //.join("line")
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", d => linkTransparencyScale(d.movement_amount)) 
-            .on("mouseover", function(event, d) {
-                d3.select(this).style("cursor", "pointer")
-                // d3.select(this).attr("stroke", "yellow")
-                })
+            .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer") })
             .on("click", (event, d) => setSelectedElement({"type": "link", "data": d}))
 
         var defs = svg.append("defs")
@@ -98,10 +95,12 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
             .join("circle")
             .attr("fill", d => !d.is_active && d.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", d => radiusScale(d.total_stake))
-            .on("mouseover", function (event, d) {
-                d3.select(this).style("cursor", "pointer")
+            .on("click", (event, d) => {
+                setSelectedElement({"type": "pool", "data": d, "delegationData":
+                linksRef.current.data().filter(l => l.source.pool_id === d.pool_id || l.target.pool_id === d.pool_id)
                 })
-            .on("click", (event, d) => setSelectedElement({"type": "pool", "data": d}))
+            })
+            .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer")})
             // .call(drag(simulation))
         //     .attr("stroke", d => 
         //         // d.is_active === 'false' ? "red" : "white"
@@ -205,38 +204,56 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
         // Handling selected element styling
         if (bubblesRef.current) {
             bubblesRef.current
-                .attr("stroke", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? "yellow" : !d.is_active ? "red" : "white"
-                )
-                .attr("stroke-width", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? 3 : 1.5)
+                .attr("stroke", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? "cyan" : !d.is_active ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio)))
+                .attr("stroke-opacity", 1)
+                .attr("stroke-width", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? 5 : 2.5)
+                .attr("fill-opacity", b => {
+                    if (!selectedElement || selectedElement.type == "link") return 0.95
+                    // If a pool is selected, highlight it and its connections, fade out others
+                    if (selectedElement.type === "pool") {
+                        return b.pool_id === selectedElement?.data?.pool_id || selectedElement?.delegationData?.some(l => (l.source.pool_id === selectedElement?.data?.pool_id && l.target.pool_id === b.pool_id) || (l.target.pool_id === selectedElement?.data?.pool_id && l.source.pool_id === b.pool_id)) ? 0.95 : 0.15
+                    }
+                    return 1})
         }
         
         if (linksRef.current) {
             linksRef.current
-                .style("stroke", d => selectedElement?.type === "link" && 
-                    (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? "yellow" : "white")
-                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement.data.source.pool_id === d.source.pool_id && selectedElement.data.target.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
+                .style("stroke", d => selectedElement?.type === "link" && (selectedElement?.data.source.pool_id === d.source.pool_id && selectedElement?.data.target.pool_id === d.target.pool_id) ? "yellow" : "white")
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement?.data.source.pool_id === d.source.pool_id && selectedElement?.data.target.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
+                .attr("display", l => {
+                    if (!selectedElement) return "block"
+                    if (selectedElement?.type === "pool") {
+                        // Show only links connected to selected pool
+                        return l.source.pool_id === selectedElement?.data?.pool_id || l.target.pool_id === selectedElement?.data?.pool_id ? "block" : "none"
+                    }
+                    if (selectedElement?.type === "link") {
+                        // Show only the selected link
+                        return (selectedElement?.data.source.pool_id === l.source.pool_id && selectedElement?.data.target.pool_id === l.target.pool_id) ? "block" : "none"
+                    }
+                    return "block"
+                })
         }
 
-    }, [selectedElement, nodes, nodeLinks])
+    }, [selectedElement])
 
     // Update selected element on epoch change. Get id of selected element, look again for data and set selected element
     useEffect(() => {
         if (!selectedElement) return
 
         if (selectedElement.type === "pool") {
-            const newNode = nodes.find(p => p.pool_id === selectedElement.data.pool_id)
+            const newNode = nodes.find(p => p.pool_id === selectedElement?.data?.pool_id)
             if (newNode) {
-            setSelectedElement({ type: "pool", data: newNode })
+                setSelectedElement({ "type": "pool", "data": newNode, "delegatonData": linksRef.current.data().filter(l => l.source.pool_id === newNode.pool_id || l.target.pool_id === newNode.pool_id)})
             } else {
-            setSelectedElement(null)
+                setSelectedElement(null)
             }
         }
 
         if (selectedElement.type === "link") {
             const newLink = nodeLinks.find(
             l =>
-                l.source_pool_id === selectedElement.data.source_pool_id &&
-                l.destination_pool_id === selectedElement.data.destination_pool_id
+                l.source_pool_id === selectedElement?.data?.source_pool_id &&
+                l.destination_pool_id === selectedElement?.data?.destination_pool_id
             )
             if (newLink) {
             setSelectedElement({ type: "link", data: newLink })

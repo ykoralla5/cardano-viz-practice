@@ -1,4 +1,3 @@
-import { max } from 'd3'
 import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
 import { useState } from 'react'
@@ -9,7 +8,6 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
     const [isModalOpen, setIsModalOpen] = useState(false)
 
     const handleRankChange = ([start, end]) => {
-        
         setFilters(prev => ({ ...prev, selectedRankMin: start, selectedRankMax: end }))
     }
 
@@ -55,7 +53,7 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
         <div className="w-full h-full absolute inset-0 text-gray-600 dark:text-white text-base">
             {/* Top buttons */}
             <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:text-green-300 cursor-pointer" onClick={handleCloseClick}>Filters</button>
+                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={handleCloseClick}>Filters</button>
                 <div>    
                     <div>
                     {/* <label for="success" class="block mb-2 text-sm font-medium text-green-700 dark:text-green-500">Your name</label> */}
@@ -70,7 +68,7 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                     {/* <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p> */}
                     </div>
                 </div>
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:text-green-300 cursor-pointer">Top 10</button>
+                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer">Top 10</button>
             </div>
             <div className="z-1 absolute left-10 right-10 bottom-2.5 bg-white dark:bg-gray-600 px-5 py-1 rounded-lg flex flex-col justify-center">
                 {/* Slot selector */}
@@ -115,20 +113,20 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                     onChange={handleEpochChange} /> */}
                     {/* -1 / +1 Epoch navigation buttons */}
                 <div className="flex items-center justify-center space-x-4 mt-2">
-                    <button type="button" onClick={goPrevEpoch} className="bg-blue-700 hover:bg-blue-800 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch <= epochRange[0]}>
+                    <button type="button" onClick={goPrevEpoch} className="bg-teal-600 hover:bg-gray-500 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch <= epochRange[0]}>
                         <svg className="w-5 h-5 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m15 19-7-7 7-7"/>
                         </svg>
                     </button>
                     <p className="text-lg bold">{filters.epoch}</p>
-                    <button type="button" onClick={goNextEpoch} className="bg-blue-700 hover:bg-blue-800 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch >= epochRange[1]}>
+                    <button type="button" onClick={goNextEpoch} className="bg-teal-600 hover:bg-gray-500 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch >= epochRange[1]}>
                         <svg className="w-5 h-5 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m9 5 7 7-7 7"/>
                         </svg>
                     </button>
                 </div>
             </div>
-            {/* Stake threshold selector*/}
+            {/* Filters modal*/}
             {isModalOpen &&
                 <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleCloseClick}>
                     <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white" onClick={e => e.stopPropagation()}>
@@ -164,7 +162,7 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                             <label className="inline-flex items-center cursor-pointer" htmlFor="delegationOnly">
                                 <input type="checkbox" value="" className="sr-only peer"
                         checked={filters.delegationChangedToggle} onChange={handleDelegationOnlyChange} id="delegationOnly"/>
-                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 dark:peer-focus:ring-teal-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600 dark:peer-checked:bg-teal-600"></div>
                                 <span className="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Show only pools whose delegation changed</span>
                             </label>
                         </div>
@@ -173,7 +171,7 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                             <label className="inline-flex items-center cursor-pointer" htmlFor="retiredOnly">
                                 <input type="checkbox" value="" className="sr-only peer"
                         checked={filters.retiredPoolsToggle} onChange={handleRetiredChange} id="retiredOnly"/>
-                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 dark:peer-checked:bg-blue-600"></div>
+                                <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 dark:peer-focus:ring-teal-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600 dark:peer-checked:bg-teal-600"></div>
                                 <span className="ms-3 text-sm font-medium text-gray-900 dark:text-gray-300">Show retired pools</span>
                             </label>
                         </div>

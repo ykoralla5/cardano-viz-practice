@@ -97,13 +97,3 @@
   }
   }
 }
-
-circle {
-  fill-opacity: 1;
-  stroke-opacity: 1;
-}
-
-circle.selected {
-  stroke: yellow;
-  stroke-width: 2;
-}
