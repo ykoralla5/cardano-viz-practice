@@ -3,7 +3,7 @@ import { Children, useEffect, useRef, useState, useMemo } from 'react'
 import { CircleLoader } from 'react-spinners'
 
 /* Generate bubble map */
-export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, selectedElement, setSelectedElement })
+export default function BubbleGraph ({ nodes, links, scales, dimensions, selectedElement, setSelectedElement, selectedElementData, setSelectedElementData })
  {
     // Scales
     const radiusScale = scales.radiusScale
@@ -19,30 +19,15 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
 
     useEffect(() => {
 
-        if (!nodes || nodes.length === 0) return
+        if (!nodes?.length || !links?.length) return
 
-        const movementAmounts = nodeLinks.map(d => d.movement_amount)
-        const movementAmountMin = d3.min(movementAmounts)
-        const movementAmountMax = d3.max(movementAmounts)
+        // const movementAmounts = links.map(d => d.movement_amount)
+        // const movementAmountMin = d3.min(movementAmounts)
+        // const movementAmountMax = d3.max(movementAmounts)
 
-        const chargeScale = d3.scaleSqrt()
-            .domain([movementAmountMin, movementAmountMax])
-            .range([-100, 100])
-            
-        // Prepare data
-        const links = nodeLinks
-            .filter(p => p.movement_type === 'REDELEGATION') // Show only redelegations on visualization
-            .map(p => ({
-                slot_no: p.slot_no,
-                source: p.source_pool_id,
-                target: p.destination_pool_id,
-                value: p.movement_count,
-                movement_amount: p.amount,
-                movement_type: p.movement_type,
-                source_stake_change_percent: p.source_stake_change_percent,
-                dest_stake_change_percent: p.dest_stake_change_percent
-                })
-            )
+        // const chargeScale = d3.scaleSqrt()
+        //     .domain([movementAmountMin, movementAmountMax])
+        //     .range([-100, 100])
 
         // Clear SVG before render
         d3.select(svgReference.current).selectAll('*').remove() // Clear previous svg renders
@@ -69,7 +54,10 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", d => linkTransparencyScale(d.movement_amount)) 
             .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer") })
-            .on("click", (event, d) => setSelectedElement({"type": "link", "data": d}))
+            .on("click", (event, d) => {
+                setSelectedElement({"type": "link", "id": d.tx_id})
+                setSelectedElementData({"data": null, "delegationData": null})
+            })
 
         var defs = svg.append("defs")
 
@@ -96,9 +84,8 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
             .attr("fill", d => !d.is_active && d.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", d => radiusScale(d.total_stake))
             .on("click", (event, d) => {
-                setSelectedElement({"type": "pool", "data": d, "delegationData":
-                linksRef.current.data().filter(l => l.source.pool_id === d.pool_id || l.target.pool_id === d.pool_id)
-                })
+                setSelectedElement({"type": "pool", "id": d.pool_id})
+                setSelectedElementData({"data": null, "delegationData": null})
             })
             .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer")})
             // .call(drag(simulation))
@@ -197,71 +184,73 @@ export default function BubbleGraph ({ nodes, nodeLinks, scales, dimensions, sel
         })
 
         return () => simulation.stop()
-     }, [nodes, nodeLinks])
+     }, [nodes, links])
 
+    // Handling selected element styling
     useEffect(() => {
-
-        // Handling selected element styling
+       
         if (bubblesRef.current) {
             bubblesRef.current
-                .attr("stroke", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? "cyan" : !d.is_active ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio)))
+                .attr("stroke", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? "cyan" : !p.is_active ? "red" : d3.interpolateRdYlGn(saturationScale(p.saturation_ratio)))
                 .attr("stroke-opacity", 1)
-                .attr("stroke-width", d => selectedElement?.type === "pool" && selectedElement?.data?.pool_id === d.pool_id ? 5 : 2.5)
-                .attr("fill-opacity", b => {
+                .attr("stroke-width", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? 5 : 2.5)
+                .attr("fill-opacity", p => {
                     if (!selectedElement || selectedElement.type == "link") return 0.95
                     // If a pool is selected, highlight it and its connections, fade out others
-                    if (selectedElement.type === "pool") {
-                        return b.pool_id === selectedElement?.data?.pool_id || selectedElement?.delegationData?.some(l => (l.source.pool_id === selectedElement?.data?.pool_id && l.target.pool_id === b.pool_id) || (l.target.pool_id === selectedElement?.data?.pool_id && l.source.pool_id === b.pool_id)) ? 0.95 : 0.15
+                    if (selectedElement.type === "pool" && selectedElementData?.delegationData !== null) {
+                        return p.pool_id === selectedElement?.id || selectedElementData?.delegationData?.some(l => (l.source.pool_id === selectedElement?.id && l.target.pool_id === p.pool_id) || (l.target.pool_id === selectedElement?.id && l.source.pool_id === p.pool_id)) ? 0.95 : 0.15
                     }
                     return 1})
         }
         
         if (linksRef.current) {
             linksRef.current
-                .style("stroke", d => selectedElement?.type === "link" && (selectedElement?.data.source.pool_id === d.source.pool_id && selectedElement?.data.target.pool_id === d.target.pool_id) ? "yellow" : "white")
-                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElement?.data.source.pool_id === d.source.pool_id && selectedElement?.data.target.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
+                .style("stroke", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.source.pool_id && selectedElementData?.data?.target?.pool_id === d.target.pool_id) ? "yellow" : "white")
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.source.pool_id && selectedElementData?.data?.target?.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
                 .attr("display", l => {
                     if (!selectedElement) return "block"
-                    if (selectedElement?.type === "pool") {
+                    if (selectedElement?.type === "pool" && selectedElementData?.delegationData !== null) {
                         // Show only links connected to selected pool
-                        return l.source.pool_id === selectedElement?.data?.pool_id || l.target.pool_id === selectedElement?.data?.pool_id ? "block" : "none"
+                        return l.source.pool_id === selectedElement?.id || l.target.pool_id === selectedElement?.id ? "block" : "none"
                     }
-                    if (selectedElement?.type === "link") {
+                    if (selectedElement?.type === "link" && selectedElementData?.data !== null) {
                         // Show only the selected link
-                        return (selectedElement?.data.source.pool_id === l.source.pool_id && selectedElement?.data.target.pool_id === l.target.pool_id) ? "block" : "none"
+                        return (selectedElementData?.data.source.pool_id === l.source.pool_id && selectedElementData?.data.target.pool_id === l.target.pool_id) ? "block" : "none"
                     }
                     return "block"
                 })
         }
 
-    }, [selectedElement])
+    }, [selectedElementData, nodes, links]) // nodes and links needed for intial render. selectedElementData instead of selectedElement so that it runs only when data is set
 
     // Update selected element on epoch change. Get id of selected element, look again for data and set selected element
     useEffect(() => {
         if (!selectedElement) return
 
         if (selectedElement.type === "pool") {
-            const newNode = nodes.find(p => p.pool_id === selectedElement?.data?.pool_id)
+            const newNode = nodes.find(p => p.pool_id === selectedElement?.id)
             if (newNode) {
-                setSelectedElement({ "type": "pool", "data": newNode, "delegatonData": linksRef.current.data().filter(l => l.source.pool_id === newNode.pool_id || l.target.pool_id === newNode.pool_id)})
+                setSelectedElement({ "type": "pool", "id": newNode.pool_id
+                    // , "delegatonData": linksRef.current.data().filter(l => l.source.pool_id === newNode.pool_id || l.target.pool_id === newNode.pool_id)
+                    })
             } else {
                 setSelectedElement(null)
             }
         }
 
         if (selectedElement.type === "link") {
-            const newLink = nodeLinks.find(
+            const newLink = links.find(
             l =>
-                l.source_pool_id === selectedElement?.data?.source_pool_id &&
-                l.destination_pool_id === selectedElement?.data?.destination_pool_id
+                l.source_pool_id === selectedElementData?.data?.source_pool_id &&
+                l.destination_pool_id === selectedElementData?.data?.destination_pool_id
             )
             if (newLink) {
-            setSelectedElement({ type: "link", data: newLink })
+                setSelectedElement({ type: "link", id: newLink.tx_id })
             } else {
-            setSelectedElement(null)
+                setSelectedElement(null)
             }
         }
-    }, [nodes, nodeLinks])
+    }, [nodes, links])
 
     return (
         <div className="relative flex flex-column items-center justify-center">

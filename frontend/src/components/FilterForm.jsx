@@ -1,23 +1,32 @@
 import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
-import { useState } from 'react'
+import { use, useCallback, useEffect, useState } from 'react'
 import * as utils from '../utils/dataTransformers'
+import { useDebounce } from 'use-debounce'
+// import { debounce } from 'lodash'
 
-export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot, epochRange, nodesCount, totalNodes, searchQuery, setSearchQuery }) {
+export default function FilterForm({ isOpen, onClose, filters, setFilters, minMaxRank, minMaxSlot, epochRange, nodesCount, totalNodes, searchQuery, setSearchQuery }) {
     const { selectedRankMin, selectedRankMax, selectedSlotMin, selectedSlotMax, epoch, retiredPoolsToggle, delegationChangedToggle } = filters
-    const [isModalOpen, setIsModalOpen] = useState(false)
+    // rapid
+    // const [tempEpochChange, setTempEpochChange] = useState(551)
 
-    const handleRankChange = ([start, end]) => {
-        setFilters(prev => ({ ...prev, selectedRankMin: start, selectedRankMax: end }))
+    const handleRankChange = ([start, end]) => { setFilters(prev => ({ ...prev, selectedRankMin: start, selectedRankMax: end }))
+}
+
+    const handleEpochChange = (value) => { 
+        setFilters(prev => ({ ...prev, epoch: value }))
+        // setTempEpochChange(value)
     }
 
-    const handleEpochChange = (e) => {
-        setFilters(prev => ({ ...prev, epoch: Number(e.target.value) }))
-    }
+    // Set epoch filter value 300ms after user stops changing the slider (to prevent excessive re-renders)
+    // useEffect(() => {
+    //     const timeoutId = setTimeout(() => {
+    //         setFilters(prev => ({ ...prev, epoch: tempEpochChange }))
+    //     }, 300)
+    //     return () => clearTimeout(timeoutId)
+    // }, [tempEpochChange, 300])
 
-    const handleSlotChange = ([start, end]) => {
-        setFilters(prev => ({ ...prev, selectedSlotMin: start, selectedSlotMax: end }))
-    }
+    const handleSlotChange = ([start, end]) => { setFilters(prev => ({ ...prev, selectedSlotMin: start, selectedSlotMax: end }))}
 
     const goPrevEpoch = () => {
         if (epoch > epochRange[0]) {
@@ -31,17 +40,9 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
         }
     }
 
-    const handleRetiredChange = (e) => {
-        setFilters(prev => ({ ...prev, retiredPoolsToggle: !prev.retiredPoolsToggle }))
-    }
+    const handleRetiredChange = (e) => { setFilters(prev => ({ ...prev, retiredPoolsToggle: !prev.retiredPoolsToggle }))}
 
-    const handleDelegationOnlyChange = (e) => {
-        setFilters(prev => ({ ...prev, delegationChangedToggle: !prev.delegationChangedToggle }))
-    }
-
-    const handleCloseClick = () => {
-        setIsModalOpen(!isModalOpen)
-    }
+    const handleDelegationOnlyChange = (e) => { setFilters(prev => ({ ...prev, delegationChangedToggle: !prev.delegationChangedToggle }))}
 
     const handleEnter = (e) => {
         if (e.key === "Enter") {
@@ -51,8 +52,9 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
 
     return (
         <div className="w-full h-full absolute inset-0 text-gray-600 dark:text-white text-base">
+            {/* <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={handleCloseClick}>Filters</button> */}
             {/* Top buttons */}
-            <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
+            {/* <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
                 <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={handleCloseClick}>Filters</button>
                 <div>    
                     <div>
@@ -65,11 +67,11 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                         onKeyDown={handleEnter}
                         placeholder="Search Pool id"
                         className="bg-green-50 border border-green-500 text-green-900 dark:text-green-400 placeholder-green-700 dark:placeholder-green-500 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2 dark:bg-gray-700 dark:border-green-500"/> */}
-                    {/* <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p> */}
+                    {/* <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
                     </div>
-                </div>
+                </div>*}
                 <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer">Top 10</button>
-            </div>
+            </div> */}
             <div className="z-1 absolute left-10 right-10 bottom-2.5 bg-white dark:bg-gray-600 px-5 py-1 rounded-lg flex flex-col justify-center">
                 {/* Slot selector */}
                 <div className="flex flex-col justify-center pb-5">
@@ -100,9 +102,10 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                         </div>
                 {/* Epoch selector */}
                 <Slider 
+                    step={1}
                     className='t-slider' 
                     value={filters.epoch} 
-                    min={epochRange[0]} max={epochRange[1]} 
+                    min={epochRange[0]} max={epochRange[1]}
                     onChange={handleEpochChange} />
                 {/* <input
                     id="epoch-slider"
@@ -118,7 +121,14 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m15 19-7-7 7-7"/>
                         </svg>
                     </button>
-                    <p className="text-lg bold">{filters.epoch}</p>
+                    {/* <p className="text-lg bold">{filters.epoch}</p> */}
+                    <input type="number" min={epochRange[0]} max={epochRange[1]} value={filters.epoch} onChange={(e) => {
+                        let val = parseInt(e.target.value)
+                        if (isNaN(val)) val = epochRange[0]
+                        if (val < epochRange[0]) val = epochRange[0]
+                        if (val > epochRange[1]) val = epochRange[1]
+                        setFilters(prev => ({ ...prev, epoch: val }))
+                    }}/>
                     <button type="button" onClick={goNextEpoch} className="bg-teal-600 hover:bg-gray-500 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch >= epochRange[1]}>
                         <svg className="w-5 h-5 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m9 5 7 7-7 7"/>
@@ -127,11 +137,11 @@ export default function FilterForm({ filters, setFilters, minMaxRank, minMaxSlot
                 </div>
             </div>
             {/* Filters modal*/}
-            {isModalOpen &&
-                <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleCloseClick}>
+            {isOpen &&
+                <div className="fixed inset-0 flex items-center justify-center z-20" onClick={onClose}>
                     <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-end">
-                            <button type="button" className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-green-300 hover:text-black" onClick={handleCloseClick}>Close</button>
+                            <button type="button" className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                         </div>
                         <div className="flex flex-col justify-center">
                             <label htmlFor="stake-threshold-slider" className="self-center">Filter by rank: Showing {nodesCount} nodes out of {totalNodes} nodes</label>

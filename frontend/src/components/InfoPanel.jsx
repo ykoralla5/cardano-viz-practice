@@ -1,30 +1,35 @@
 import { useMemo, useState } from 'react'
 import * as utils from '../utils/dataTransformers'
 
-export default function InfoPanel({ selectedElement, setSelectedElement }) {
+export default function InfoPanel({ selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) {
     const [isModalOpen, setIsModalOpen] = useState(false)
 
     const handleInfoCloseClick = () => {
         setSelectedElement(null)
+        setSelectedElementData(null)
     }
 
     const handleDelegationCloseClick = () => {
         setIsModalOpen(!isModalOpen)
     }
 
-    if (!selectedElement || selectedElement.length === 0) {
+    if (!selectedElement) {
+        return <div className="">No element selected.</div>
+    }
+
+    if (!selectedElementData || !selectedElementData.data) {
         return (
-            <div className=""></div>
+            <div className="">Loading element data...</div>
         )
     }
 
-    const data = selectedElement.data
-    const delegationData = selectedElement.delegationData
+    const data = selectedElementData.data
+    const delegationData = selectedElementData.delegationData
     const type = selectedElement.type
 
     return (
         <>
-            {selectedElement && (
+            {selectedElement && selectedElementData && (
                 <div className="w-[30vw] absolute left-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-sm rounded-md wrap-anywhere text-gray-400 dark:text-gray-400">
                     <div className="flex justify-end">
                         <button className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleInfoCloseClick}>Close</button>
@@ -50,22 +55,22 @@ export default function InfoPanel({ selectedElement, setSelectedElement }) {
                     {type === "link" && (
                         <>
                             <p className="text-lg font-bold text-gray-900 dark:text-white">Selected delegation</p>
-                            <p>From Pool <span className="text-gray-900 dark:text-white">({data.source.pool_id}) {data.source.pool_view}</span> </p>
-                            <p>To Pool <span className="text-gray-900 dark:text-white">({data.target.pool_id}) {data.target.pool_view}</span></p>
+                            <p>From Pool <span className="text-gray-900 dark:text-white">({data.source?.pool_id}) {data.source?.pool_view}</span> </p>
+                            <p>To Pool <span className="text-gray-900 dark:text-white">({data.target?.pool_id}) {data.target?.pool_view}</span></p>
                             <p>Delegated Amount <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.movement_amount)}</span></p>
                             <p>Delegation Type <span className="text-gray-900 dark:text-white">{data.movement_type}</span></p>
                             <p>Stake change in source pool <span className="text-red-500 font-bold">-{data.source_stake_change_percent} %</span></p>
                             <p>Stake change in destination <span className="text-green-500 font-bold">{data.dest_stake_change_percent} %</span></p>
                         </>
                     )}
-                    {isModalOpen && selectedElement.type === "pool" && (
+                    {isModalOpen && type === "pool" && (
                         <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleDelegationCloseClick}>
                             <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                                 <div className="flex justify-end">
                                     <button type="button" className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>Close</button>
                                 </div>
-                                <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {selectedElement.data.name} [{selectedElement.data.ticker}]</p>
-                                {selectedElement.delegationData.length === 0 ? (
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {data.name} [{data.ticker}]</p>
+                                {delegationData.length === 0 ? (
                                     <p>No delegations found for this pool in the current dataset.</p>
                                 ) : (
                                     <table className="min-w-full border border-gray-300 dark:border-gray-600">

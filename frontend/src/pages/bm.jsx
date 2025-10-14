@@ -4,6 +4,7 @@ import { clsx } from 'clsx'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
 import InfoPanel from '../components/InfoPanel'
+import TopX from '../components/TopX'
 import { fetchPoolData } from '../api/fetchPoolData'
 import { ClipLoader } from 'react-spinners'
 
@@ -14,7 +15,8 @@ export default function BubbleMap() {
     const [poolData, setPoolData] = useState([])
     const [movementData, setMovementData] = useState([])
     const [epochParamData, setEpochParamData] = useState([])
-    const [selectedElement, setSelectedElement] = useState(null)
+    const [selectedElement, setSelectedElement] = useState(null) // {type: 'pool' or 'link', id: pool_id or link_id}
+    const [selectedElementData, setSelectedElementData] = useState(null) // {data: {}, delegationData: []}
     const [searchQuery, setSearchQuery] = useState("")
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -27,6 +29,12 @@ export default function BubbleMap() {
         retiredPoolsToggle: true,
         delegationChangedToggle: true
     })
+
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
+    const [isTopXModalOpen, setIsTopXModalOpen] = useState(false)
+
+    const toggleFilterModal = () => setIsFilterModalOpen(prev => !prev);
+    const toggleTopXModal = () => setIsTopXModalOpen(prev => !prev);
 
     // Constants
     const [epochRange, setEpochRange] = useState([210, 560])
@@ -135,10 +143,8 @@ export default function BubbleMap() {
     // Filter node links on filters chosen by user
     const filteredLinks = useMemo(() => {
         if (!movementData.length) return [0, 0]
-        // const nodeIds = new Set(filteredNodes.map(p => p.pool_id))
         return movementData
             .filter(link => link.slot_no >= filters.selectedSlotMin && link.slot_no <= filters.selectedSlotMax)
-        // .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id)
     }, [movementData, filteredNodes, filters.selectedSlotMin, filters.selectedSlotMax])
 
     // Final nodes and links to be used in the visualization
@@ -146,10 +152,23 @@ export default function BubbleMap() {
     const { finalNodes, finalLinks } = useMemo(() => {
         const nodeIds = new Set(filteredNodes.map(p => p.pool_id))
         const links = filteredLinks
-            .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id))
+            .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id)) 
+            .filter(link => link.movement_type === 'REDELEGATION') // Show only redelegations on visualization
+            .map(link => ({
+                tx_id: link.tx_id,
+                slot_no: link.slot_no,
+                source: link.source_pool_id,
+                target: link.destination_pool_id,
+                value: link.movement_count,
+                movement_amount: link.amount,
+                movement_type: link.movement_type,
+                source_stake_change_percent: link.source_stake_change_percent,
+                dest_stake_change_percent: link.dest_stake_change_percent
+                })
+            )
 
         const nodes = filteredNodes
-            .filter(n => links.some(l => l.source_pool_id === n.pool_id || l.destination_pool_id === n.pool_id))
+            .filter(n => links.some(l => l.source === n.pool_id || l.target === n.pool_id))
         // If delegationChangedToggle is off, return all filtered nodes; if on, return only nodes that have links
         return { finalNodes: filters.delegationChangedToggle ? nodes : filteredNodes, finalLinks: links }
     }, [filteredNodes, filteredLinks])
@@ -180,6 +199,39 @@ export default function BubbleMap() {
         }))
     }, [minMaxRank])
 
+    // set selectedElementData when selectedElement changes
+    useEffect(() => {
+
+        // setSelectedElementData(null) // reset selectedElementData to avoid showing old data while new data is being fetched
+        const fetchElementData = async () => {
+            try {
+                if (selectedElement) {
+            const {type, id} = selectedElement
+            if (id) {
+                let data = null
+                let delegationData = null
+                if (type === 'pool') {
+                    data = finalNodes.find(pool => pool.pool_id === id)
+                    delegationData = finalLinks.filter(l => l.source.pool_id === id || l.target.pool_id === id)
+                }
+                else if (type === 'link') {
+                    data = finalLinks.find(link => link.tx_id === id)
+                    delegationData = null
+                }
+                setSelectedElementData({"data": data || null, "delegationData": delegationData || null})
+            }
+        } else {
+            setSelectedElementData(null)
+        }
+            }
+            catch (err) {
+                console.error("Error fetching selected element data: ", err)
+            }
+        }
+        fetchElementData()
+        
+    }, [selectedElement, finalNodes, finalLinks])
+
     const onSearch = useCallback((value) => {
         const found = filteredNodes.find(node => node.pool_id === value)
         if (found) {
@@ -197,10 +249,30 @@ export default function BubbleMap() {
 
     return (
         <main className="font-display text-base flex-grow relative w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
+            <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
+                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleFilterModal}>Filters</button>
+                {/* <div>    
+                    <div>
+                    <label for="success" class="block mb-2 text-sm font-medium text-green-700 dark:text-green-500">Your name</label>
+                    <input
+                        type="text"
+                        id="success"
+                        // value={searchQuery}
+                        // onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={handleEnter}
+                        placeholder="Search Pool id"
+                        className="bg-green-50 border border-green-500 text-green-900 dark:text-green-400 placeholder-green-700 dark:placeholder-green-500 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2 dark:bg-gray-700 dark:border-green-500"/>
+                    <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
+                    </div>
+                </div> */}
+                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleTopXModal}>Top 10</button>
+            </div>
             {/* Keep showing bubble map of old data if data already exists. If getting initial data, show div */}
             {(finalNodes.length !== 0 && finalLinks.length !== 0) && (
                 <>
                     <FilterForm
+                        isOpen={isFilterModalOpen} 
+                        onClose={toggleFilterModal}
                         filters={filters}
                         setFilters={setFilters}
                         minMaxRank={minMaxRank}
@@ -213,17 +285,27 @@ export default function BubbleMap() {
                     />
                     <section id="d3-chart-container" className="w-full flex flex-col items-center relative m-0">
                         <LayoutWrapper
-                            nodes={finalNodes} nodeLinks={finalLinks}
+                            nodes={finalNodes} links={finalLinks}
                             scales={{ 'radiusScale': radiusScale, 'saturationScale': saturationScale, 'linkTransparencyScale': linkTransparencyScale, 'linkWidthScale': linkWidthScale, 'saturationPercentScale': saturationPercentScale }}
                             selectedElement={selectedElement}
-                            setSelectedElement={setSelectedElement} />
+                            setSelectedElement={setSelectedElement} 
+                            selectedElementData={selectedElementData}
+                            setSelectedElementData={setSelectedElementData} />
                     </section>
-                    <InfoPanel selectedElement={selectedElement} setSelectedElement={setSelectedElement} />
+                    <InfoPanel 
+                        selectedElement={selectedElement} setSelectedElement={setSelectedElement}
+                        selectedElementData={selectedElementData} setSelectedElementData={setSelectedElementData} />
+                    <TopX 
+                        isOpen={isTopXModalOpen}
+                        onClose={toggleTopXModal}
+                        selectedElement={selectedElement}
+                        setSelectedElement={setSelectedElement}
+                        nodes={finalNodes} />
                 </>
             )}
             {isLoading && (
-                <div className='absolute inset-0 flex justify-center items-center bg-white/20 background-blur-sm z-50'>
-                    <ClipLoader color="white" loading={isLoading} size={100} aria-label="Loading Spinner" data-testid="loader"/>
+                <div className="absolute inset-0 flex justify-center items-center bg-white/20 background-blur-sm z-50">
+                    <ClipLoader color="white" loading={isLoading} size={100} aria-label="Loading Spinner" data-testid="loader" />
                 </div>
             )}
         </main>
