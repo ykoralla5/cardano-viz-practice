@@ -13,13 +13,9 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
         setIsModalOpen(!isModalOpen)
     }
 
-    if (!selectedElement) {
-        return <div className="">No element selected.</div>
-    }
-
     if (!selectedElementData || !selectedElementData.data) {
         return (
-            <div className="">Loading element data...</div>
+            <div className=""></div>
         )
     }
 
@@ -30,7 +26,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
     return (
         <>
             {selectedElement && selectedElementData && (
-                <div className="w-[30vw] absolute left-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-sm rounded-md wrap-anywhere text-gray-400 dark:text-gray-400">
+                <div className="w-[25vw] absolute left-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-sm rounded-md wrap-anywhere text-gray-400 dark:text-gray-400 overflow-y-auto max-h-[65vh]">
                     <div className="flex justify-end">
                         <button className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleInfoCloseClick}>Close</button>
                     </div>
@@ -42,13 +38,17 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                             <p>Homepage <a className="font-medium text-blue-600 dark:text-blue-500 hover:underline" href={data.homepage} target="_blank">{data.homepage}</a></p>
                             <p>Description <span className="text-gray-900 dark:text-white">{data.description}</span></p>
                             <p>ID <span className="text-gray-900 dark:text-white">({data.pool_id}) <span className="font-mono">{data.pool_view}</span></span></p>
-                            <p>Stake <span className="text-gray-900 dark:text-white">₳ {!data.is_active && data.delegator_count === 0 ? utils.formatAda(data.total_stake) + ' !Stake from previous epoch!' : utils.formatAda(data.total_stake)} (#{data.rank})</span></p>
+                            <p>Active Stake <span className="text-gray-900 dark:text-white">₳ {!data.is_active && data.delegator_count === 0 ? utils.formatAda(data.total_stake) + ' !Stake from previous epoch!' : utils.formatAda(data.total_stake)} (#{data.rank})</span></p>
                             <p># Delegators <span className="text-gray-900 dark:text-white">{data.delegator_count}</span></p>
                             <p>Operator pledge <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.pledge)}</span></p>
                             <p>Saturation ratio <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_ratio * 100) / 100}</span></p>
                             <p>Actual / Expected # of blocks minted <span className="text-gray-900 dark:text-white">{data.actual_blocks} / {Math.round(data.expected_blocks * 100) / 100}</span></p>
                             <p>Performance <span className={data.performance_ratio < 1 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>{Math.round(data.performance_ratio * 100) / 100}</span></p>
-                            <p>Pool active? <span className="text-gray-900 dark:text-white">{data.is_active.toString()}</span></p>
+                            <p className='flex'>Pool active?  { data?.is_active ? (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 stroke-green-500"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-6 stroke-red-500"><path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                            )}</p>
                             <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>See delegations</button>
                         </>
                     )}
@@ -65,7 +65,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                     )}
                     {isModalOpen && type === "pool" && (
                         <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleDelegationCloseClick}>
-                            <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                            <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white w-[60vw] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                                 <div className="flex justify-end">
                                     <button type="button" className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>Close</button>
                                 </div>

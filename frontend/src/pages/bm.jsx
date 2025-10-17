@@ -265,7 +265,7 @@ export default function BubbleMap() {
                     <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
                     </div>
                 </div> */}
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleTopXModal}>Top 10</button>
+                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleTopXModal}>Pools list</button>
             </div>
             {/* Keep showing bubble map of old data if data already exists. If getting initial data, show div */}
             {(finalNodes.length !== 0 && finalLinks.length !== 0) && (

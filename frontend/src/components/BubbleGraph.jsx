@@ -192,7 +192,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         if (bubblesRef.current) {
             bubblesRef.current
                 .attr("stroke", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? "cyan" : !p.is_active ? "red" : d3.interpolateRdYlGn(saturationScale(p.saturation_ratio)))
-                .attr("stroke-opacity", 1)
+                .attr("stroke-opacity", 0.3)
                 .attr("stroke-width", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? 5 : 2.5)
                 .attr("fill-opacity", p => {
                     if (!selectedElement || selectedElement.type == "link") return 0.95
