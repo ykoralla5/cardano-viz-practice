@@ -1,631 +1,158 @@
-Materialized views
+Summary tables
 
-mv_epoch_delegator_stake_v2: delegators contributing to the top 50% of the pool
-    WITH ranked AS (
-         SELECT es.epoch_no,
-            es.pool_id AS pool_id,
-            ph.view AS pool_view,
-            es.addr_id AS stake_addr_id,
-            sa.view AS stake_addr_view,
-            es.amount AS amount,
-            sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view) AS pool_total,
-            sum(es.amount::numeric) OVER (PARTITION BY es.epoch_no, ph.view ORDER BY es.amount DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total
-           FROM epoch_stake es
-             JOIN pool_hash ph ON ph.id = es.pool_id
-             JOIN stake_address sa ON sa.id = es.addr_id
-        )
-    SELECT ranked.epoch_no,
-        ranked.pool_id,
-        ranked.pool_view,
-        ranked.stake_addr_id,
-        ranked.stake_addr_view,
-        ranked.amount,
-        ranked.pool_total,
-        ranked.running_total
-    FROM ranked
-    WHERE ranked.running_total <= (ranked.pool_total * 0.5) ORDER BY epoch_no, pool_total DESC;
+delegation_summary: get all delegations in all epochs
 
-    CREATE UNIQUE INDEX ON mv_epoch_delegator_stake_v2 (epoch_no, pool_id, stake_addr_id);
+CREATE TABLE IF NOT EXISTS delegation_summary (
+    delegation_id BIGINT NOT NULL,
+    epoch_no BIGINT NOT NULL,
+    slot_no word63type NOT NULL,
+    tx_id BIGINT NOT NULL,
+    addr_id BIGINT NOT NULL,
+    source_pool_id BIGINT,
+    destination_pool_id BIGINT,
+    amount lovelace,
+    last_epoch word31type,
+    movement_type TEXT,
+    computed_at TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (epoch_no, tx_id, addr_id, delegation_id)
+);
 
----------------------------------------------------------------------------------------------------------------------------------
-mv_epoch_delegation_movement_amounts_counts: example format:
-[
-  {"from": "PoolA", "to": "PoolB", "count": 30, "amount": 3573592},
-  {"from": "PoolB", "to": "PoolA", "count": 20, "amount": 35734545592},
-  {"from": "PoolA", "to": "PoolC", "count": 15, "amount": 346346457},
-  {"from": "PoolC", "to": "PoolB", "count": 5, "amount": 68689798965}
-]
+CREATE TABLE IF NOT EXISTS pool_perf_summary (
+    epoch_no word31type,
+    pool_id BIGINT,
+    actual_blocks BIGINT,
+    expected_blocks NUMERIC(20,5),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (epoch_no, pool_id)
+);
 
-    SELECT
-        epoch_no,
-        source_pool_id,
-        source_pool_view,
-        destination_pool_id,
-        destination_pool_view,
-		COUNT(*) AS movement_counts,
-        SUM(amount) AS movement_amount
-    FROM mv_epoch_delegation_movements
-    WHERE source_pool_id IS NOT NULL
-    AND destination_pool_id IS NOT NULL
-    AND source_pool_id <> destination_pool_id
-    GROUP BY epoch_no, source_pool_id, destination_pool_id, source_pool_view, destination_pool_view ORDER BY epoch_no, movement_amount DESC;
+CREATE TABLE IF NOT EXISTS pool_stats_summary (
+    epoch_no word31type,
+    pool_id BIGINT,
+    pool_view TEXT,
+    total_stake NUMERIC(20, 5),
+    delegator_count BIGINT,
+    pledge lovelace,
+    is_active BOOLEAN,
+    saturation_ratio NUMERIC(20, 10),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (epoch_no, pool_id)
+);
 
-    CREATE INDEX idx_mv_movements_epoch_source
-        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, source_pool_id);
-
-    CREATE INDEX idx_mv_movements_epoch_dest
-        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, destination_pool_id);
-
-        OR SINGLE INDEX
-    
-    CREATE INDEX idx_mv_movements_epoch_source_dest
-        ON mv_epoch_delegation_movement_amounts_counts (epoch_no, source_pool_id, destination_pool_id);
-
----------------------------------------------------------------------------------------------------------------------------------
-mv_epoch_delegation_percent_change:
-
-    V1: WITH stake_with_prev AS (
-        SELECT
-            cur.epoch_no,
-            cur.pool_id,
-            cur.total_stake AS total_stake,
-            prev.total_stake AS prev_total_stake,
-            CASE
-                WHEN prev.total_stake IS NULL OR prev.total_stake = 0 THEN NULL
-                ELSE ROUND(((cur.total_stake - prev.total_stake)::numeric / prev.total_stake) * 100, 2)
-            END AS stake_change_pct
-        FROM mv_epoch_pool_stats cur
-        LEFT JOIN mv_epoch_pool_stats prev
-            ON prev.pool_id = cur.pool_id
-        AND prev.epoch_no = cur.epoch_no - 1
-    )
-    SELECT
-        m.epoch_no,
-        m.source_pool_id,
-        s_prev.prev_total_stake AS source_prev_epoch_stake,
-        s_prev.total_stake AS source_curr_epoch_stake,
-        s_prev.stake_change_pct AS source_stake_change_percent,
-        m.destination_pool_id,
-        d_prev.prev_total_stake AS dest_prev_epoch_stake,
-        d_prev.total_stake AS dest_curr_epoch_stake,
-        d_prev.stake_change_pct AS dest_stake_change_percent,
-        m.movement_counts,
-        m.movement_amount,
-        ROUND((m.movement_amount::numeric / NULLIF(d_prev.prev_total_stake, 0)) * 100, 2) AS percent_of_prev_dest_stake
-    FROM (
-        SELECT
-            epoch_no,
-            source_pool_id,
-            destination_pool_id,
-            COUNT(*) AS movement_counts,
-            SUM(amount) AS movement_amount
-        FROM mv_epoch_delegation_movements
-        WHERE source_pool_id IS NOT NULL
-        AND destination_pool_id IS NOT NULL
-        AND source_pool_id <> destination_pool_id
-        GROUP BY epoch_no, source_pool_id, destination_pool_id
-    ) m
-    LEFT JOIN stake_with_prev s_prev
-        ON s_prev.epoch_no = m.epoch_no
-        AND s_prev.pool_id = m.source_pool_id
-    LEFT JOIN stake_with_prev d_prev
-        ON d_prev.epoch_no = m.epoch_no
-        AND d_prev.pool_id = m.destination_pool_id
-    ORDER BY m.epoch_no DESC, percent_of_prev_dest_stake DESC;
-
-    V2: WITH pool_stake_prev AS (
-    SELECT
-        epoch_no,
-        pool_id,
-        total_stake AS prev_total_stake
-    FROM mv_epoch_pool_stats
-    )
-    SELECT
-        m.epoch_no,
-        
-        -- source
-        m.source_pool_id,
-        ps_src.prev_total_stake AS source_prev_stake,
-        ROUND(
-            CASE
-                WHEN ps_src.prev_total_stake IS NULL OR ps_src.prev_total_stake = 0
-                THEN NULL
-                ELSE (-m.movement_amount::numeric / ps_src.prev_total_stake) * 100
-            END, 5
-        ) AS source_stake_change_pct,
-
-        -- destination
-        m.destination_pool_id,
-        ps_dst.prev_total_stake AS dest_prev_stake,
-        ROUND(
-            CASE
-                WHEN ps_dst.prev_total_stake IS NULL OR ps_dst.prev_total_stake = 0
-                THEN NULL
-                ELSE (m.movement_amount::numeric / ps_dst.prev_total_stake) * 100
-            END, 5
-        ) AS dest_stake_change_pct,
-
-        -- movement info
-        m.movement_amount,
-        m.movement_count
-    FROM (
-        SELECT
-            epoch_no,
-            source_pool_id,
-            destination_pool_id,
-            SUM(amount) AS movement_amount,
-            COUNT(*) AS movement_count
-        FROM mv_epoch_delegation_movements
-        WHERE source_pool_id IS NOT NULL
-        AND destination_pool_id IS NOT NULL
-        AND source_pool_id <> destination_pool_id and epoch_no=560
-        GROUP BY epoch_no, source_pool_id, destination_pool_id
-    ) m
-    LEFT JOIN pool_stake_prev ps_src
-    ON ps_src.epoch_no = m.epoch_no - 1
-    AND ps_src.pool_id = m.source_pool_id
-    LEFT JOIN pool_stake_prev ps_dst
-    ON ps_dst.epoch_no = m.epoch_no - 1
-    AND ps_dst.pool_id = m.destination_pool_id
-    ORDER BY m.epoch_no DESC, m.movement_count DESC;
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_delegation_movements: shows EFFECTIVE delegation movements made from previous epoch
-
-    SELECT
-        curr_epoch.epoch_no,
-        curr_epoch.addr_id,
-        st_add.view AS stake_addr_view,
-        prev_epoch.pool_id AS source_pool_id,
-        ph_prev.view AS source_pool_view,
-        curr_epoch.pool_id AS destination_pool_id,
-        ph_curr.view AS destination_pool_view,
-        curr_epoch.amount AS amount
-    FROM epoch_stake prev_epoch
-    JOIN epoch_stake curr_epoch 
-        ON prev_epoch.addr_id = curr_epoch.addr_id
-    AND curr_epoch.epoch_no = prev_epoch.epoch_no + 1
-    JOIN pool_hash ph_prev ON ph_prev.id = prev_epoch.pool_id
-    JOIN pool_hash ph_curr ON ph_curr.id = curr_epoch.pool_id
-    JOIN stake_address st_add ON st_add.id = curr_epoch.addr_id
-    WHERE prev_epoch.pool_id <> curr_epoch.pool_id
-    ORDER BY curr_epoch.epoch_no, curr_epoch.addr_id;
-
-    CREATE UNIQUE INDEX unique_mv_epoch_del_mov ON mv_epoch_delegation_movements (epoch_no, addr_id);
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_delegation_movements_granular: shows delegation movements slot-wise
-
-    WITH delegation_with_prev AS (
+SELECT cron.schedule(
+    'update_delegation_summary',  -- job name
+    '*/5 * * * *',               -- every 5 minutes
+$$
+INSERT INTO delegation_summary (
+    delegation_id,
+    epoch_no,
+    slot_no,
+    tx_id,
+    addr_id,
+    source_pool_id,
+    destination_pool_id,
+    amount,
+    last_epoch,
+    movement_type
+)
+WITH delegation_with_prev AS (
     SELECT
         d.id AS delegation_id,
         d.addr_id,
         d.pool_hash_id AS dest_pool_id,
         tx.id AS tx_id,
-        b.epoch_no,
+        d.active_epoch_no AS epoch_no,
         b.slot_no,
         tx.hash AS tx_hash,
         LAG(d.pool_hash_id) OVER (
             PARTITION BY d.addr_id
-            ORDER BY b.time, tx.id
+            ORDER BY d.active_epoch_no, b.slot_no, tx.id
         ) AS prev_pool_id
     FROM delegation d
     JOIN tx ON tx.id = d.tx_id
     JOIN block b ON b.id = tx.block_id
-    )
-    SELECT
-        dw.epoch_no,
-        dw.slot_no,
-        dw.tx_id,
-        dw.addr_id AS delegator_id,
-        dw.prev_pool_id AS source_pool_id,
-        dw.dest_pool_id AS destination_pool_id,
-        CASE
-            WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN 'NEW_STAKE'
-            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN 'UNDELEGATED'
-            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL
-                AND dw.prev_pool_id <> dw.dest_pool_id THEN 'REDELEGATION'
-            ELSE 'NO_CHANGE'
-        END AS movement_type
-    FROM delegation_with_prev dw
-    ORDER BY dw.epoch_no, dw.slot_no;
-
-    V2: WITH delegation_with_prev AS (
-         SELECT d.id AS delegation_id,
-            d.addr_id,
-            d.pool_hash_id AS dest_pool_id,
-            tx.id AS tx_id,
-            b.epoch_no,
-            b.slot_no,
-            tx.hash AS tx_hash,
-            lag(d.pool_hash_id) OVER (PARTITION BY d.addr_id ORDER BY b."time", tx.id) AS prev_pool_id
-           FROM delegation d
-             JOIN tx ON tx.id = d.tx_id
-             JOIN block b ON b.id = tx.block_id
-        )
- SELECT dw.epoch_no,
+)
+SELECT
+    dw.delegation_id,
+    dw.epoch_no,
     dw.slot_no,
     dw.tx_id,
     dw.addr_id,
     dw.prev_pool_id AS source_pool_id,
     dw.dest_pool_id AS destination_pool_id,
     es_prev.amount,
-        CASE
-            WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN 'NEW_STAKE'::text
-            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN 'UNDELEGATED'::text
-            WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id THEN 'REDELEGATION'::text
-            ELSE 'NO_CHANGE'::text
-        END AS movement_type
-   FROM delegation_with_prev dw
-     LEFT JOIN LATERAL (SELECT es.amount FROM epoch_stake es WHERE es.addr_id = dw.addr_id AND es.epoch_no < dw.epoch_no ORDER BY es.epoch_no DESC
-    LIMIT 1) es_prev ON true
-  ORDER BY dw.epoch_no, dw.slot_no;
-
-    CREATE INDEX idx_mv_epoch_slot ON mv_epoch_delegation_movements_granular (epoch_no, slot_no);
-
-    CREATE INDEX idx_mv_delegator ON mv_epoch_delegation_movements_granular (addr_id);
-
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_pool_performance: actual, expected block count by pool and by Epoch. Ratio to be calculated on django
-    WITH total_epoch_blocks AS (
-        SELECT epoch_no, COUNT(block_no) AS active_slots FROM block GROUP BY epoch_no
-    ),
-    total_epoch_stake AS (
-        SELECT
-            epoch_no, SUM(amount) AS total_stake
-        FROM epoch_stake
-        GROUP BY epoch_no
-    ),
-    pool_epoch_blocks AS (
-        SELECT 
-            b.epoch_no, sl.pool_hash_id AS pool_id, COUNT(b.id) AS actual_blocks
-        FROM block b
-        JOIN slot_leader sl ON sl.id = b.slot_leader_id
-        WHERE sl.pool_hash_id IS NOT NULL
-        GROUP BY b.epoch_no, sl.pool_hash_id
-    ),
-    pool_epoch_stake AS (
-        SELECT
-            epoch_no, pool_id, SUM(amount) AS pool_stake FROM epoch_stake GROUP BY epoch_no, pool_id
-    )
-    SELECT
-        ep.epoch_no,
-        ph.view AS pool_id,
-        COALESCE(peb.actual_blocks) AS actual_blocks,
-        ROUND(((teb.active_slots::numeric * (1 - ep.decentralisation::numeric) * pes.pool_stake::numeric)/ tes.total_stake::numeric),2) AS expected_blocks
-    FROM epoch_param ep
-    JOIN epoch_stake es ON es.epoch_no = ep.epoch_no
-    JOIN pool_hash ph ON ph.id = es.pool_id
-    JOIN total_epoch_blocks teb ON teb.epoch_no = ep.epoch_no
-    JOIN total_epoch_stake tes ON teb.epoch_no = ep.epoch_no
-    JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
-    LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id
-    LEFT JOIN block b ON b.slot_leader_id = ph.id AND b.epoch_no = ep.epoch_no;
-
-    reduced : WITH total_epoch_blocks AS (
-        SELECT epoch_no, COUNT(block_no) AS active_slots FROM block GROUP BY epoch_no
-    ),
-    total_epoch_stake AS (
-        SELECT
-            epoch_no, SUM(amount) AS total_stake
-        FROM epoch_stake
-        GROUP BY epoch_no
-    ),
-    pool_epoch_blocks AS (
-        SELECT 
-            b.epoch_no, sl.pool_hash_id AS pool_id, COUNT(b.id) AS actual_blocks
-        FROM block b
-        JOIN slot_leader sl ON sl.id = b.slot_leader_id
-        WHERE sl.pool_hash_id IS NOT NULL 
-        GROUP BY b.epoch_no, sl.pool_hash_id
-    ),
-    pool_epoch_stake AS (
-        SELECT
-            epoch_no, pool_id, SUM(amount) AS pool_stake FROM epoch_stake GROUP BY epoch_no, pool_id
-    )
-    SELECT
-        ep.epoch_no,
-        peb.pool_id AS pool_id,
-        COALESCE(peb.actual_blocks) AS actual_blocks,
-        ROUND(((teb.active_slots::numeric * (1 - ep.decentralisation::numeric) * pes.pool_stake::numeric)/ tes.total_stake::numeric),2) AS expected_blocks
-    FROM epoch_param ep 
-    JOIN epoch_stake es ON es.epoch_no = ep.epoch_no
-    JOIN total_epoch_blocks teb ON teb.epoch_no = ep.epoch_no
-    JOIN total_epoch_stake tes ON teb.epoch_no = ep.epoch_no
-    JOIN pool_epoch_stake pes ON pes.epoch_no = ep.epoch_no
-    LEFT JOIN pool_epoch_blocks peb ON peb.epoch_no = ep.epoch_no AND peb.pool_id = pes.pool_id;
-
-    V3: 
-    WITH pool_stats AS (
-    SELECT
-        epoch_no,
-        pool_id,
-        SUM(amount) AS pool_stake,
-        SUM(SUM(amount)) OVER (PARTITION BY epoch_no) AS total_stake
-    FROM
-        epoch_stake
-    GROUP BY
-        epoch_no, pool_id
-    ),
-    total_epoch_slots AS (
-	        SELECT epoch_no, COUNT(block_no) AS total_active_slots FROM block GROUP BY epoch_no
-    ),
-    block_stats AS (
-        SELECT
-            b.epoch_no,
-            sl.pool_hash_id AS pool_id,
-            COUNT(b.id) AS actual_blocks
-        FROM
-            block b
-        JOIN
-            slot_leader sl ON sl.id = b.slot_leader_id
-        WHERE
-            sl.pool_hash_id IS NOT NULL
-        GROUP BY
-            b.epoch_no, sl.pool_hash_id
-        )
-        SELECT
-            ps.epoch_no,
-            ps.pool_id,
-            COALESCE(bs.actual_blocks, 0) AS actual_blocks,
-            ROUND(
-                (tes.total_active_slots::numeric * (1 - ep.decentralisation::numeric) * ps.pool_stake::numeric) / NULLIF(ps.total_stake::numeric, 0),
-                5
-            ) AS expected_blocks
-        FROM
-            pool_stats ps
-        JOIN
-            epoch_param ep ON ep.epoch_no = ps.epoch_no
-        JOIN
-            total_epoch_slots tes ON tes.epoch_no = ps.epoch_no
-        LEFT JOIN
-            block_stats bs ON bs.epoch_no = ps.epoch_no AND bs.pool_id = ps.pool_id;
-
-    CREATE UNIQUE INDEX ON mv_epoch_pool_performance (epoch_no, pool_id);
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_pool_stats: delegator count, saturation_ratio, pledge, is_active
-
-    WITH pledge_at_snapshot AS (
-        SELECT DISTINCT ON (ph.id, e.no) 
-            ph.id AS pool_id,
-            e.no AS epoch_no,
-            pu.pledge
-        FROM pool_hash ph
-        JOIN pool_update pu ON pu.hash_id = ph.id
-        JOIN tx t ON t.id = pu.registered_tx_id
-        JOIN block b ON b.id = t.block_id
-        JOIN epoch e ON b.time <= e.end_time
-        ORDER BY ph.id, e.no, b.time DESC
-    ),
-    total_active AS (
-        SELECT epoch_no, SUM(amount) AS total_active_stake
-        FROM epoch_stake
-        GROUP BY epoch_no
-    )
-    SELECT
-        es.epoch_no,
-        es.pool_id,
-        ph.view AS pool_view,
-        SUM(es.amount) AS total_stake,
-        COUNT(DISTINCT es.addr_id) AS delegator_count,
-        pledges.pledge,
-        NOT EXISTS (
-                SELECT 1
-                FROM pool_retire pr
-                WHERE pr.hash_id = es.pool_id
-                AND pr.retiring_epoch <= es.epoch_no
-            ) AS is_active,
-        (SUM(es.amount) / (ta.total_active_stake / ep.optimal_pool_count)) AS saturation_ratio
+    es_prev.epoch_no AS last_epoch,
+    CASE
+        WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN ''NEW_STAKE''
+        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN ''UNDELEGATED''
+        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id AND es_prev.amount IS NULL THEN ''AWAITING_ACTIVATION''
+        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id THEN ''REDELEGATION''
+        ELSE ''NO_CHANGE''
+    END AS movement_type
+FROM delegation_with_prev dw
+LEFT JOIN LATERAL (
+    SELECT es.epoch_no, es.amount
     FROM epoch_stake es
-    JOIN pool_hash ph ON ph.id = es.pool_id
-    JOIN epoch_param ep ON ep.epoch_no = es.epoch_no
-    JOIN total_active ta ON ta.epoch_no = es.epoch_no
-    LEFT JOIN pledge_at_snapshot pledges
-        ON pledges.pool_id = es.pool_id AND pledges.epoch_no = es.epoch_no
-    GROUP BY es.epoch_no, es.pool_id, ph.view, pledges.pledge, ep.optimal_pool_count, ta.total_active_stake;
+    WHERE es.addr_id = dw.addr_id
+      AND es.epoch_no <= dw.epoch_no - 2
+    ORDER BY es.epoch_no DESC
+    LIMIT 1
+) es_prev ON TRUE
+ORDER BY dw.epoch_no, dw.slot_no
+ON CONFLICT (epoch_no, tx_id, addr_id, delegation_id)
+DO NOTHING;
+$$
+);
 
-    CREATE UNIQUE INDEX idx_mv_pool_stats_epoch_pool_cover
-        ON mv_epoch_pool_stats (epoch_no, pool_id)
-        INCLUDE (total_stake, delegator_count);
+sudo touch logs/delegation_summary.log
+sudo touch logs/pool_expected_blocks_summary.log
+sudo touch logs/pool_epoch_stake_summary.log
+sudo chown postgres:postgres logs/*.log
 
----------------------------------------------------------------------------------------------------------------------------------
+sudo -u postgres crontab -e
+ADD the lines:
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz/psql_incremental_updates/logs/delegation.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/delegation.log 2>&1
 
-mv_epoch_params: decentralisation, pledge influence, saturation point
-    WITH total_active AS (
-        SELECT
-            epoch_no,
-            SUM(amount) AS total_active_stake
-        FROM epoch_stake
-        GROUP BY epoch_no
-    )
-    SELECT 
-		ep.epoch_no,
-		ep.influence AS pledge_influence,
-		ep.decentralisation,
-    	(ta.total_active_stake / ep.optimal_pool_count) AS saturation_point
-    FROM 
-        epoch_param ep
-    JOIN
-        total_active ta ON ta.epoch_no = ep.epoch_no;
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_stats.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_stats.log 2>&1
 
-    CREATE UNIQUE INDEX ON mv_epoch_params (epoch_no);
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_stats_gini: gini coefficient
-    WITH pool_stakes AS (
-        SELECT
-            epoch_no,
-            pool_id,
-            amount,
-            SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
-            ROW_NUMBER() OVER (PARTITION BY epoch_no ORDER BY amount ASC) AS rank_asc,
-            COUNT(amount) OVER (PARTITION BY epoch_no) AS num_pools
-        FROM
-            epoch_stake
-        WHERE
-            epoch_no >= 209
-    ),
-    gini_calc AS (
-        SELECT
-            epoch_no,
-            num_pools,
-            total_stake,
-            SUM(rank_asc * amount) AS sum_product_rank_stake
-        FROM
-            pool_stakes
-        GROUP BY
-            epoch_no, num_pools, total_stake
-    )
-    SELECT
-        epoch_no,
-        (2 * sum_product_rank_stake / (num_pools * total_stake)) - ((num_pools + 1.0) / num_pools) AS gini_coefficient
-    FROM
-        gini_calc
-    ORDER BY
-        epoch_no DESC;
-
-    CREATE UNIQUE INDEX ON mv_epoch_stats_gini (epoch_no);
-
----------------------------------------------------------------------------------------------------------------------------------
-
-mv_epoch_stats_nakamoto: nakamoto coefficient
-    WITH pool_stakes_ranked AS (
-        SELECT
-            epoch_no,
-            pool_id,
-            amount,
-            SUM(amount) OVER (PARTITION BY epoch_no) AS total_stake,
-            SUM(amount) OVER (PARTITION BY epoch_no ORDER BY amount DESC) AS cumulative_stake
-        FROM
-            epoch_stake
-        WHERE
-            epoch_no >= 209
-    ),
-    nakamoto_calc AS (
-        SELECT
-            epoch_no,
-            COUNT(pool_id) AS nakamoto_coefficient
-        FROM
-            pool_stakes_ranked
-        WHERE
-            cumulative_stake > total_stake * 0.5
-        GROUP BY
-            epoch_no
-    )
-    SELECT
-        epoch_no,
-        nakamoto_coefficient
-    FROM
-        nakamoto_calc
-    ORDER BY
-        epoch_no DESC;
-
-    CREATE UNIQUE INDEX ON mv_epoch_stats_nakamoto (epoch_no);
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_perf.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_perf.log 2>&1
 
 
-CREATE MATERIALIZED VIEW mv_pledge_at_snapshot AS
-SELECT DISTINCT ON (ph.id, e.no) 
-    ph.id AS pool_id,
-    e.no AS epoch_no,
-    pu.pledge
-FROM pool_hash ph
-JOIN pool_update pu ON pu.hash_id = ph.id
-JOIN tx t ON t.id = pu.registered_tx_id
-JOIN block b ON b.id = t.block_id
-JOIN epoch e ON b.time <= e.end_time
-ORDER BY ph.id, e.no, b.time DESC;
+/home/cardano-viz-practice/psql_incremental_updates/logs/*.log {
+	daily
+	rotate 8
+	compress
+	delaycompress
+    	missingok
+    	notifempty
+	create 640 postgres postgres
+}
 
-CREATE MATERIALIZED VIEW mv_total_active_stake AS
-SELECT epoch_no, SUM(amount) AS total_active_stake
-FROM epoch_stake
-GROUP BY epoch_no;
+Done:
 
-CREATE MATERIALIZED VIEW mv_last_stake_before_retire AS
-SELECT
-    es.pool_id,
-    pr.retiring_epoch,
-    SUM(es.amount) AS last_stake
-FROM pool_retire pr
-JOIN epoch_stake es
-  ON es.pool_id = pr.hash_id
- AND es.epoch_no = pr.retiring_epoch - 1
-GROUP BY es.pool_id, pr.retiring_epoch;
+-- Index for filtering by epoch (incremental insert)
+CREATE INDEX idx_pool_stats_epoch ON pool_stats_summary(epoch_no);
 
-WITH total_active AS (
-    SELECT epoch_no, SUM(amount) AS total_active_stake
-    FROM epoch_stake
-    GROUP BY epoch_no
-),
-prev_epoch_stake AS (
-    SELECT
-        es.epoch_no + 1 AS epoch_no,
-        es.pool_id,
-        SUM(es.amount) AS prev_total_stake
-    FROM epoch_stake es
-    GROUP BY es.epoch_no + 1, es.pool_id
-)
-SELECT
-    base.epoch_no,
-    base.pool_id,
-    ph.view AS pool_view,
-    -- adjusted stake
-    CASE
-        WHEN NOT is_active
-         AND COUNT(DISTINCT es.addr_id) = 0
-        THEN pes.prev_total_stake
-        ELSE SUM(es.amount)
-    END AS adjusted_total_stake,
-    -- delegators
-    CASE
-        WHEN NOT is_active
-         AND COUNT(DISTINCT es.addr_id) = 0
-        THEN 0
-        ELSE COUNT(DISTINCT es.addr_id)
-    END AS delegator_count,
-    ps.pledge,
-    is_active,
-    CASE
-        WHEN NOT is_active
-         AND COUNT(DISTINCT es.addr_id) = 0
-        THEN 'full_retirement'
-        WHEN NOT is_active
-         AND COUNT(DISTINCT es.addr_id) > 0
-        THEN 'partial_retirement'
-        ELSE 'active'
-    END AS retirement_case,
-    (CASE
-        WHEN NOT is_active
-         AND COUNT(DISTINCT es.addr_id) = 0
-        THEN pes.prev_total_stake
-        ELSE SUM(es.amount)
-     END) / (ta.total_active_stake / ep.optimal_pool_count) AS saturation_ratio
-FROM (
-    SELECT DISTINCT e.no AS epoch_no, ph.id AS pool_id
-    FROM epoch e
-    CROSS JOIN pool_hash ph
-) base
-JOIN pool_hash ph ON ph.id = base.pool_id
-JOIN epoch_param ep ON ep.epoch_no = base.epoch_no
-JOIN total_active ta ON ta.epoch_no = base.epoch_no
-LEFT JOIN epoch_stake es
-       ON es.pool_id = base.pool_id AND es.epoch_no = base.epoch_no
-LEFT JOIN prev_epoch_stake pes
-       ON pes.epoch_no = base.epoch_no AND pes.pool_id = base.pool_id
-LEFT JOIN mv_pledge_at_snapshot ps
-       ON ps.pool_id = base.pool_id AND ps.epoch_no = base.epoch_no
-LEFT JOIN pool_retire pr
-       ON pr.hash_id = base.pool_id
-     AND pr.retiring_epoch <= base.epoch_no where base.epoch_no=560 and base.pool_id=3564
-GROUP BY base.epoch_no, base.pool_id, ph.view, ps.pledge,
-         ep.optimal_pool_count, ta.total_active_stake,
-         pes.prev_total_stake,
-         (pr.hash_id IS NULL)
-HAVING SUM(es.amount) IS NOT NULL
-    OR (NOT (pr.hash_id IS NULL)); -- keep ghost pools
+-- Index for incremental updates / filtering by epoch
+CREATE INDEX idx_pool_perf_epoch ON pool_perf_summary(epoch_no);
+
+-- Index for filtering by epoch
+CREATE INDEX idx_delegation_epoch ON delegation_summary(epoch_no);
+
+-- Optional: index by pool if you query per pool often
+CREATE INDEX idx_pool_stats_pool ON pool_stats_summary(pool_id);
+
+---------------------------------------------------------------------------
+
+
+
+
+
+-- Optional: index by pool
+CREATE INDEX idx_pool_perf_pool ON pool_perf_summary(pool_id);
+
+
+
+-- Index for filtering by pool
+CREATE INDEX idx_delegation_source_pool ON delegation_summary(source_pool_id);
+CREATE INDEX idx_delegation_dest_pool ON delegation_summary(destination_pool_id);

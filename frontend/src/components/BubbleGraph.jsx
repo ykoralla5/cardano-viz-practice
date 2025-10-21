@@ -49,7 +49,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         // Add links
         linksRef.current = linksLayer
             .selectAll("line")
-            .data(links)
+            .data(links.filter(link => link.movement_type === 'REDELEGATION'))
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", d => linkTransparencyScale(d.movement_amount)) 

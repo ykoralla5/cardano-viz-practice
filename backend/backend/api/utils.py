@@ -33,7 +33,7 @@ def validate_epoch(epoch_param):
         return JsonResponse({'Error': 'Invalid epoch number'}, status=400)
     
     # Validate if epoch number from request exists
-    if not models.Epoch.objects.filter(no=epoch_number).exists():
+    if not models.EpochStake.objects.filter(epoch_no=epoch_number).exists():
         return JsonResponse({'Error': f'Epoch {epoch_number} not found'}, status=404)
     # Validate if epoch number is below 209, so before the Shelley era
     elif epoch_number < MIN_EPOCH:

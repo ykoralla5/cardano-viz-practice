@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import * as utils from '../utils/dataTransformers'
+import ViewToolTip from '../components/ViewToolTip'
 
 export default function InfoPanel({ selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) {
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -79,6 +80,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Date</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">From Pool</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">To Pool</th>
+                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Delegation by</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Amount (₳)</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Type</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Source Stake Change (%)</th>
@@ -89,8 +91,12 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                                             {delegationData.sort(d => d.slot_no).map((d, index) => (
                                                 <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-700"}>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{utils.translateSlot(d.slot_no)}</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1"><span className={d.source.pool_id === data.pool_id ? "font-bold text-teal-200": ""}>{d.source.pool_view} ({d.source.pool_id})</span></td>
+                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
+                                                        {/* <span className={d.source.pool_id === data.pool_id ? "font-bold text-teal-200": ""}>{d.source.pool_view} ({d.source.pool_id})</span> */}
+                                                        <ViewToolTip id={d.source.pool_view} key={d.slot_no}/>
+                                                        </td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1"><span className={d.target.pool_id === data.pool_id ? "font-bold text-teal-200": ""}>{d.target.pool_view} ({d.target.pool_id})</span></td>
+                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{d.addr_view}</td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(d.movement_amount)}</td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{d.movement_type}</td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</td>

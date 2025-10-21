@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { Children, useEffect, useMemo, useRef, useState, useCallback, use } from 'react'
+import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { clsx } from 'clsx'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
@@ -14,7 +14,7 @@ export default function BubbleMap() {
     const [rawData, setRawData] = useState(null)
     const [poolData, setPoolData] = useState([])
     const [movementData, setMovementData] = useState([])
-    const [epochParamData, setEpochParamData] = useState([])
+    // const [epochParamData, setEpochParamData] = useState([])
     const [selectedElement, setSelectedElement] = useState(null) // {type: 'pool' or 'link', id: pool_id or link_id}
     const [selectedElementData, setSelectedElementData] = useState(null) // {data: {}, delegationData: []}
     const [searchQuery, setSearchQuery] = useState("")
@@ -48,7 +48,7 @@ export default function BubbleMap() {
             setRawData(response)
             setMovementData(response[0]['delegation_movements'])
             setPoolData(response[0]['pool_stats'])
-            setEpochParamData(response[0]['epoch_params'])
+            // setEpochParamData(response[0]['epoch_params'])
             setEpochRange(response[0]['min_max_epoch'])
         }
         catch (err) {
@@ -153,10 +153,12 @@ export default function BubbleMap() {
         const nodeIds = new Set(filteredNodes.map(p => p.pool_id))
         const links = filteredLinks
             .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id)) 
-            .filter(link => link.movement_type === 'REDELEGATION') // Show only redelegations on visualization
+            // .filter(link => link.movement_type === 'REDELEGATION') // Show only redelegations on visualization
             .map(link => ({
                 tx_id: link.tx_id,
                 slot_no: link.slot_no,
+                addr_id: link.addr_id,
+                addr_view: link.addr_view,
                 source: link.source_pool_id,
                 target: link.destination_pool_id,
                 value: link.movement_count,
