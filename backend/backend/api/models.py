@@ -321,7 +321,7 @@ class PoolStatsSummary(models.Model):
         unique_together = ['epoch_no', 'pool_id']
 
 class PoolPerfSummary(models.Model):
-    epoch_no = models.IntegerField(primary_key=True)
+    epoch_no = models.IntegerField()
     pool_id = models.BigIntegerField()
     actual_blocks = models.IntegerField()
     expected_blocks = models.FloatField()
@@ -332,3 +332,21 @@ class PoolPerfSummary(models.Model):
         db_table = 'pool_perf_summary'
         app_label = 'api'
         unique_together = ['epoch_no', 'pool_id']
+
+class EpochSummary(models.Model):
+    epoch_no = models.IntegerField(primary_key=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    decentralisation = models.DecimalField(max_digits=5, decimal_places=4)
+    pledge_influence = models.DecimalField(max_digits=5, decimal_places=4)
+    optimal_pool_count = models.IntegerField()
+    total_active_stake = models.DecimalField(max_digits=40, decimal_places=0)
+    stake_address_count = models.IntegerField()
+    pool_count = models.IntegerField()
+    phase = models.CharField(max_length=20)
+    saturation_point = models.DecimalField(max_digits=20, decimal_places=5)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "epoch_summary"
+        ordering = ["epoch_no"]

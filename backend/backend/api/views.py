@@ -1,10 +1,12 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.db.models import Max, Window, Sum, OuterRef, Subquery, DecimalField, F, Count, Q
 from django.db.models.functions import Least, Greatest
 from decimal import Decimal
+from datetime import timedelta
+import math
 from collections import defaultdict
 from . import models
 from . import serializers
@@ -243,3 +245,82 @@ def get_epoch_snapshot(request):
     print("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot view.")
 
     return Response(combined)
+
+# Helper function
+def get_nearest_epoch(missing_epoch, existing_epochs_map):
+    """
+    Finds the nearest existing epoch
+    """
+    if not existing_epochs_map:
+        return None
+
+    min_diff = math.inf
+    nearest_epoch = None
+    
+    # Iterate through all existing epochs to find the minimum absolute difference
+    for epoch, value in existing_epochs_map.items():
+        diff = abs(epoch - missing_epoch)
+        
+        if diff < min_diff:
+            min_diff = diff
+            nearest_epoch = value
+        elif diff == min_diff:
+            # Optional: handle ties (e.g., prefer the smaller number or the one first encountered)
+            # For simplicity, we just stick with the first one found that minimizes the diff.
+            pass
+            
+    return nearest_epoch
+
+@api_view(['GET'])
+def get_epochs(request):
+
+    start_time = time.time()
+    
+    # full_qparam = request.GET.get('full')
+
+    # Min and max epoch numbers available
+    min_max_epoch = utils.get_min_max_epoch()
+    MIN_EPOCH = min_max_epoch[0]
+    MAX_EPOCH = min_max_epoch[1]
+
+    epochs_qs = models.EpochSummary.objects \
+            .values('epoch_no', 'start_time', 'end_time').distinct('epoch_no')
+        
+    existing_epochs_map = { e['epoch_no']: {'start_time': e['start_time'],'end_time': e['end_time']} for e in epochs_qs }
+
+    # Generate set of all epochs
+    full_range_epochs = set(range(MIN_EPOCH, MAX_EPOCH + 1))
+    
+    # Identify existing epochs and calculate the missing set
+    existing_epochs = set(existing_epochs_map.keys())
+    missing_epochs = sorted(list(full_range_epochs - existing_epochs))
+    
+    # 2. Interpolation Logic
+    for missing_epoch in missing_epochs:
+        nearest_epoch = get_nearest_epoch(missing_epoch, existing_epochs_map)
+        
+        if nearest_epoch:
+            # Calculate the new times by adding 5 days (timedelta) to the nearest entry's times
+            epoch_start_time = nearest_epoch['start_time'] + timedelta(days=5)
+            epoch_end_time = nearest_epoch['end_time'] + timedelta(days=5)
+            
+            existing_epochs_map[missing_epoch] = {
+                'start_time': epoch_start_time, 
+                'end_time': epoch_end_time
+            }
+
+    # Sort by epoch numbers
+    final_epochs = sorted(existing_epochs_map.items())
+    return Response(final_epochs)
+
+@api_view(['GET'])
+def get_epoch_detail(request, epoch_no):
+
+    epoch_detail = get_object_or_404(models.EpochSummary, epoch_no=epoch_no)
+    serializer = serializers.EpochSummarySerializer(epoch_detail)
+
+    # current = models.EpochSummary.objects.filter(epoch_no=epoch_qparam)
+    
+    # current_serialized = serializers.EpochSummarySerializer(current).data if current else None
+
+    return Response(serializer.data)

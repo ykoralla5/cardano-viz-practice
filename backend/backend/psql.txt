@@ -39,83 +39,41 @@ CREATE TABLE IF NOT EXISTS pool_stats_summary (
     PRIMARY KEY (epoch_no, pool_id)
 );
 
-SELECT cron.schedule(
-    'update_delegation_summary',  -- job name
-    '*/5 * * * *',               -- every 5 minutes
-$$
-INSERT INTO delegation_summary (
-    delegation_id,
-    epoch_no,
-    slot_no,
-    tx_id,
-    addr_id,
-    source_pool_id,
-    destination_pool_id,
-    amount,
-    last_epoch,
-    movement_type
-)
-WITH delegation_with_prev AS (
-    SELECT
-        d.id AS delegation_id,
-        d.addr_id,
-        d.pool_hash_id AS dest_pool_id,
-        tx.id AS tx_id,
-        d.active_epoch_no AS epoch_no,
-        b.slot_no,
-        tx.hash AS tx_hash,
-        LAG(d.pool_hash_id) OVER (
-            PARTITION BY d.addr_id
-            ORDER BY d.active_epoch_no, b.slot_no, tx.id
-        ) AS prev_pool_id
-    FROM delegation d
-    JOIN tx ON tx.id = d.tx_id
-    JOIN block b ON b.id = tx.block_id
-)
-SELECT
-    dw.delegation_id,
-    dw.epoch_no,
-    dw.slot_no,
-    dw.tx_id,
-    dw.addr_id,
-    dw.prev_pool_id AS source_pool_id,
-    dw.dest_pool_id AS destination_pool_id,
-    es_prev.amount,
-    es_prev.epoch_no AS last_epoch,
-    CASE
-        WHEN dw.prev_pool_id IS NULL AND dw.dest_pool_id IS NOT NULL THEN ''NEW_STAKE''
-        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NULL THEN ''UNDELEGATED''
-        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id AND es_prev.amount IS NULL THEN ''AWAITING_ACTIVATION''
-        WHEN dw.prev_pool_id IS NOT NULL AND dw.dest_pool_id IS NOT NULL AND dw.prev_pool_id <> dw.dest_pool_id THEN ''REDELEGATION''
-        ELSE ''NO_CHANGE''
-    END AS movement_type
-FROM delegation_with_prev dw
-LEFT JOIN LATERAL (
-    SELECT es.epoch_no, es.amount
-    FROM epoch_stake es
-    WHERE es.addr_id = dw.addr_id
-      AND es.epoch_no <= dw.epoch_no - 2
-    ORDER BY es.epoch_no DESC
-    LIMIT 1
-) es_prev ON TRUE
-ORDER BY dw.epoch_no, dw.slot_no
-ON CONFLICT (epoch_no, tx_id, addr_id, delegation_id)
-DO NOTHING;
-$$
+CREATE TABLE IF NOT EXISTS epoch_summary (
+    epoch_no word31type,
+    phase TEXT NOT NULL,
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
+    pledge_influence NUMERIC(5,4),
+    decentralisation NUMERIC(5,4),
+    optimal_pool_count INTEGER,
+    saturation_point NUMERIC(20, 5),
+    total_active_stake NUMERIC,
+    pool_count INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    stake_address_count INTEGER,
+    PRIMARY KEY (epoch_no)
 );
 
+
 sudo touch logs/delegation_summary.log
-sudo touch logs/pool_expected_blocks_summary.log
-sudo touch logs/pool_epoch_stake_summary.log
-sudo chown postgres:postgres logs/*.log
+sudo touch logs/pool_perf_summary.log
+sudo touch logs/pool_stats_summary.log
+sudo touch logs/epoch_summary.log
+sudo chown postgres:postgres logs/*.log*
+sudo chmod 640 logs/*.log*
 
 sudo -u postgres crontab -e
 ADD the lines:
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz/psql_incremental_updates/logs/delegation.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/delegation.log 2>&1
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz/psql_incremental_updates/logs/delegation_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log 2>&1
 
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_stats.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_stats.log 2>&1
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log 2>&1
 
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_perf.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_perf.log 2>&1
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log 2>&1
+
+*/30 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1
+
+*/30 * * * * echo "[$(date)] Starting epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1 && echo "[$(date)] Finished epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log
 
 
 /home/cardano-viz-practice/psql_incremental_updates/logs/*.log {
@@ -141,6 +99,8 @@ CREATE INDEX idx_delegation_epoch ON delegation_summary(epoch_no);
 
 -- Optional: index by pool if you query per pool often
 CREATE INDEX idx_pool_stats_pool ON pool_stats_summary(pool_id);
+
+CREATE INDEX idx_epochs_summ_epoch ON epoch_summary(epoch_no);
 
 ---------------------------------------------------------------------------
 

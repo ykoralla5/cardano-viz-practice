@@ -27,14 +27,18 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
     return (
         <>
             {selectedElement && selectedElementData && (
-                <div className="w-[25vw] absolute left-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-sm rounded-md wrap-anywhere text-gray-400 dark:text-gray-400 overflow-y-auto max-h-[65vh]">
-                    <div className="flex justify-end">
-                        <button className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleInfoCloseClick}>Close</button>
-                    </div>
-                    {type === "pool" && (
-                        <>
+                <div className="w-[25vw] absolute left-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-base rounded-md wrap-anywhere text-gray-400 dark:text-gray-400">
+                    <div className="flex-shrink-0 flex justify-between items-center">
+                        <div className="pb-2">
                             <p className="text-lg font-bold text-gray-900 dark:text-white">Selected Pool</p>
                             <p className="text-tiny">Information shown here is for this epoch</p>
+                        </div>
+                        <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleInfoCloseClick}>Close</button>
+                    </div>
+                    <div className="overflow-y-auto max-h-[60vh]">
+                    {type === "pool" && (
+                        <>
+                            
                             <p>Name <span className="text-gray-900 dark:text-white">{data.name} [{data.ticker}]</span></p>
                             <p>Homepage <a className="font-medium text-blue-600 dark:text-blue-500 hover:underline" href={data.homepage} target="_blank">{data.homepage}</a></p>
                             <p>Description <span className="text-gray-900 dark:text-white">{data.description}</span></p>
@@ -64,48 +68,54 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                             <p>Stake change in destination <span className="text-green-500 font-bold">{data.dest_stake_change_percent} %</span></p>
                         </>
                     )}
+                    </div>
                     {isModalOpen && type === "pool" && (
                         <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleDelegationCloseClick}>
-                            <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white w-[60vw] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                                <div className="flex justify-end">
-                                    <button type="button" className="absolute px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>Close</button>
+                            <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white w-[60vw] max-h-[60vh]" onClick={e => e.stopPropagation()}>
+                                <div className="p-1 flex-shrink-0 flex justify-between items-center">
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {data.name} [{data.ticker}]</p>
+                                    <button type="button" className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>Close</button>
                                 </div>
-                                <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {data.name} [{data.ticker}]</p>
+                                <div className="flex-grow overflow-y-auto p-2">
                                 {delegationData.length === 0 ? (
                                     <p>No delegations found for this pool in the current dataset.</p>
                                 ) : (
                                     <table className="min-w-full border border-gray-300 dark:border-gray-600">
                                         <thead>
                                             <tr>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Date</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">From Pool</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">To Pool</th>
+                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-25">Date</th>
+                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-50">From Pool</th>
+                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-50">To Pool</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Delegation by</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Amount (₳)</th>
                                                 <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Type</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Source Stake Change (%)</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Dest Stake Change (%)</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {delegationData.sort(d => d.slot_no).map((d, index) => (
                                                 <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-700"}>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{utils.translateSlot(d.slot_no)}</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
-                                                        {/* <span className={d.source.pool_id === data.pool_id ? "font-bold text-teal-200": ""}>{d.source.pool_view} ({d.source.pool_id})</span> */}
+                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
+                                                        <p className="font-semibold">{d.source.name} [{d.source.ticker}]</p>
                                                         <ViewToolTip id={d.source.pool_view} key={d.slot_no}/>
+                                                        {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span></p>}
+                                                    </td>
+                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
+                                                        <p className="font-semibold">{d.target.name} [{d.target.ticker}]</p>
+                                                        <ViewToolTip id={d.target.pool_view} key={d.slot_no}/>
+                                                        {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-green-500 font-bold">- {d.dest_stake_change_percent} %</span></p>}
                                                         </td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1"><span className={d.target.pool_id === data.pool_id ? "font-bold text-teal-200": ""}>{d.target.pool_view} ({d.target.pool_id})</span></td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{d.addr_view}</td>
+                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
+                                                        <ViewToolTip id={d.addr_view} key={d.slot_no} />
+                                                    </td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(d.movement_amount)}</td>
                                                     <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{d.movement_type}</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-green-500 font-bold">{d.dest_stake_change_percent} %</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 )}
+                                </div>
                             </div>
                         </div>
                     )}

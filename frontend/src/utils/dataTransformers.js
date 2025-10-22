@@ -12,6 +12,18 @@ export function formatAda(lovelace) {
 }
 
 /**
+ * Format amount in lovelaces to ADA with thousands separator
+ * @param {number} lovelace - Amount in lovelaces 
+ * @returns {string} Formatted amount in ADA with thousands separator
+ */
+export function formatNumber(number) {
+    var parts = number.toFixed(0).toString().split(".")
+    var formattedNum = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+    
+    return formattedNum
+}
+
+/**
      * Convert Cardano slot number to a Date object
      * @param {number} slot - The slot number from block
      * @param {number} daysPerEpoch - Number of days per epoch (default: 5 for mainnet)
@@ -35,16 +47,16 @@ export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTim
 
     const timestamp = startTimestamp + (slot - startSlot)
     const date = new Intl.DateTimeFormat('en-GB', {
-        // year: 'numeric',
-        // month: '2-digit',
-        // day: '2-digit',
-        // hour: '2-digit',
-        // minute: '2-digit',
-        // second: '2-digit',
-        // hour12: false,
-        dateStyle: 'full',
-        timeStyle: 'long',
-        timeZone: 'UTC'
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        // dateStyle: 'full',
+        // timeStyle: 'long',
+        // timeZone: 'UTC'
     }).format(new Date(timestamp * 1000)) // Convert to milliseconds
 
     return date

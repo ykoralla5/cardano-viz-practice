@@ -1,11 +1,13 @@
 import * as d3 from 'd3'
-import { Children, useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { clsx } from 'clsx'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
 import InfoPanel from '../components/InfoPanel'
 import TopX from '../components/TopX'
+import EpochList from '../components/EpochList'
+import EpochData from '../components/EpochData'
 import { fetchPoolData } from '../api/fetchPoolData'
+import { fetchEpochs, fetchCurrentEpoch } from '../api/fetchEpochMetadata'
 import { ClipLoader } from 'react-spinners'
 
 /* Fetching data from API and keeping addresses holding top 50% of stakes */
@@ -14,7 +16,8 @@ export default function BubbleMap() {
     const [rawData, setRawData] = useState(null)
     const [poolData, setPoolData] = useState([])
     const [movementData, setMovementData] = useState([])
-    // const [epochParamData, setEpochParamData] = useState([])
+    const [epochsList, setEpochsList] = useState([])
+    const [currentEpochData, setCurrentEpochData] = useState({})
     const [selectedElement, setSelectedElement] = useState(null) // {type: 'pool' or 'link', id: pool_id or link_id}
     const [selectedElementData, setSelectedElementData] = useState(null) // {data: {}, delegationData: []}
     const [searchQuery, setSearchQuery] = useState("")
@@ -30,17 +33,24 @@ export default function BubbleMap() {
         delegationChangedToggle: true
     })
 
+    // Modal states
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
     const [isTopXModalOpen, setIsTopXModalOpen] = useState(false)
+    const [isEpochListOpen, setEpochListOpen] = useState(false)
+    const [isEpochDataOpen, setEpochDataOpen] = useState(false)
 
-    const toggleFilterModal = () => setIsFilterModalOpen(prev => !prev);
-    const toggleTopXModal = () => setIsTopXModalOpen(prev => !prev);
+    // Modal toggle functions
+    const toggleFilterModal = () => setIsFilterModalOpen(prev => !prev)
+    const toggleTopXModal = () => setIsTopXModalOpen(prev => !prev)
+    const toggleEpochList = () => setEpochListOpen(prev => !prev)
+    const toggleEpochData = () => setEpochDataOpen(prev => !prev)
+    // const toggleEpochStatsModal = () => setEpochStatsModalOpen(prev => !prev)
 
     // Constants
     const [epochRange, setEpochRange] = useState([210, 560])
 
     // Function to fetch data
-    async function fetchData() {
+    async function fetchDelegationData() {
         try {
             setIsLoading(true)
             // Make API call
@@ -59,16 +69,34 @@ export default function BubbleMap() {
         }
     }
 
+    async function fetchEpochsList() {
+        const response = await fetchEpochs()
+        setEpochsList(response)
+        }
+
+    async function fetchCurrentEpochData() {
+        if (!filters.epoch) return
+
+        const response = await fetchCurrentEpoch(filters.epoch)
+        setCurrentEpochData(response)
+        }
+
     // Fetch data on the change in epoch input
     useEffect(() => {
-        fetchData()
+        fetchEpochsList()
+    }, [])
+
+    // Fetch data on the change in epoch input
+    useEffect(() => {
+        fetchDelegationData()
+        fetchCurrentEpochData()
     }, [filters.epoch])
 
     const radiusScale = useMemo(() => {
         if (!poolData.length) return () => 5 // fallback
         return d3.scaleSqrt()
-            .domain([0, d3.max(poolData, d => d.total_stake)])
-            .range([5, 75])
+            .domain([1, d3.max(poolData, d => d.total_stake)])
+            .range([5, 100])
     }, [poolData])
 
     const saturationPercentScale = useMemo(() => {
@@ -252,7 +280,7 @@ export default function BubbleMap() {
     return (
         <main className="font-display text-base flex-grow relative w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleFilterModal}>Filters</button>
+                <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isFilterModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleFilterModal}>Filters</button>
                 {/* <div>    
                     <div>
                     <label for="success" class="block mb-2 text-sm font-medium text-green-700 dark:text-green-500">Your name</label>
@@ -267,7 +295,11 @@ export default function BubbleMap() {
                     <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
                     </div>
                 </div> */}
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={toggleTopXModal}>Pools list</button>
+                <div className="flex gap-5">
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochDataOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochData}>Epoch statistics</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochListOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochList}>Epoch: {filters.epoch}</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isTopXModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleTopXModal}>Pools list</button>
+                </div>
             </div>
             {/* Keep showing bubble map of old data if data already exists. If getting initial data, show div */}
             {(finalNodes.length !== 0 && finalLinks.length !== 0) && (
@@ -297,6 +329,18 @@ export default function BubbleMap() {
                     <InfoPanel 
                         selectedElement={selectedElement} setSelectedElement={setSelectedElement}
                         selectedElementData={selectedElementData} setSelectedElementData={setSelectedElementData} />
+                    <EpochData
+                        isOpen={isEpochDataOpen}
+                        onClose={toggleEpochData}
+                        currentEpochData={currentEpochData}
+                    />
+                    <EpochList
+                        isOpen={isEpochListOpen}
+                        onClose={toggleEpochList}
+                        filters={filters}
+                        setFilters={setFilters}
+                        epochsList={epochsList}
+                    />
                     <TopX 
                         isOpen={isTopXModalOpen}
                         onClose={toggleTopXModal}

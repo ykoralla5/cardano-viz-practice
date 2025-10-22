@@ -49,13 +49,13 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         // Add links
         linksRef.current = linksLayer
             .selectAll("line")
-            .data(links.filter(link => link.movement_type === 'REDELEGATION'))
+            .data(links.filter(l => l.movement_type === 'REDELEGATION'))
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
-            .attr("stroke-opacity", d => linkTransparencyScale(d.movement_amount)) 
-            .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer") })
-            .on("click", (event, d) => {
-                setSelectedElement({"type": "link", "id": d.tx_id})
+            .attr("stroke-opacity", l => linkTransparencyScale(l.movement_amount)) 
+            .on("mouseover", function(l) { d3.select(this).style("cursor", "pointer") })
+            .on("click", (event, l) => {
+                setSelectedElement({"type": "link", "id": l.tx_id})
                 setSelectedElementData({"data": null, "delegationData": null})
             })
 
@@ -81,13 +81,13 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .selectAll("circle")
             .data(nodes)
             .join("circle")
-            .attr("fill", d => !d.is_active && d.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(d.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
-            .attr("r", d => radiusScale(d.total_stake))
-            .on("click", (event, d) => {
-                setSelectedElement({"type": "pool", "id": d.pool_id})
+            .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(p.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
+            .attr("r", p => radiusScale(p.total_stake))
+            .on("click", (event, p) => {
+                setSelectedElement({"type": "pool", "id": p.pool_id})
                 setSelectedElementData({"data": null, "delegationData": null})
             })
-            .on("mouseover", function(d) { d3.select(this).style("cursor", "pointer")})
+            .on("mouseover", function(p) { d3.select(this).style("cursor", "pointer")})
             // .call(drag(simulation))
         //     .attr("stroke", d => 
         //         // d.is_active === 'false' ? "red" : "white"
@@ -141,7 +141,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.pool_id).distance(0)) // normalize
+            .force("link", d3.forceLink(links).id(p => p.pool_id).distance(0)) // normalize
             .force("charge", d3.forceManyBody().strength(-50))
             .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 20).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
@@ -149,7 +149,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .force("y", d3.forceY().strength(0.05))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
-        bubblesRef.current.append("title").text(d => saturationPercentScale(d.saturation_ratio))
+        bubblesRef.current.append("title").text(p => p.pool_id)
 
         simulation.on("tick", () => {
 

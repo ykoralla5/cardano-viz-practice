@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.db.models import Max
+from django.db.models import Min, Max
 from . import models
 from . import views
 import logging
@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 
 # Helper function
 def get_min_max_slot():
-    MIN_SLOT = 271
-    max_slot = models.Block.objects.aggregate(max_slot=Max("slot_no"))["max_slot"]
-    logger.info(f"Min and max slot numbers retrieved: {MIN_SLOT}, {max_slot}")
-    return [MIN_SLOT, max_slot]
+    # MIN_SLOT = 271
+    min_slot = models.DelegationSummary.objects.aggregate(min_slot=Min("slot_no"))["min_slot"]
+    max_slot = models.DelegationSummary.objects.aggregate(max_slot=Max("slot_no"))["max_slot"]
+    logger.info(f"Min and max slot numbers retrieved: {min_slot}, {max_slot}")
+    return [min_slot, max_slot]
 
 # Helper function
 def get_min_max_epoch():

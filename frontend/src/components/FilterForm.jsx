@@ -10,39 +10,39 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
     const { selectedRankMin, selectedRankMax, selectedSlotMin, selectedSlotMax, epoch, retiredPoolsToggle, delegationChangedToggle } = filters
     // rapid
     // const [tempEpochChange, setTempEpochChange] = useState(551)
-    const [tempEpochInput, setTempEpochInput] = useState(560)
+    // const [tempEpochInput, setTempEpochInput] = useState(560)
 
-    const handleInputChange = (event) => {
-        setTempEpochInput(event.target.value)
-    }
+    // const handleInputChange = (event) => {
+    //     setTempEpochInput(event.target.value)
+    // }
 
-    const handleInputKeyDown = (event) => {
-        if (event.key === 'Enter') {
-            const number = parseInt(tempEpochInput)
-            if (!isNaN(number)) { setFilters(prev => ({...prev, epoch: number}))}
-        }
-    }
+    // const handleInputKeyDown = (event) => {
+    //     if (event.key === 'Enter') {
+    //         const number = parseInt(tempEpochInput)
+    //         if (!isNaN(number)) { setFilters(prev => ({...prev, epoch: number}))}
+    //     }
+    // }
 
-    const handleInputBlur = () => {
-        const number = parseInt(tempEpochInput)
-        // Only set the state if the input is a valid number
-        if (!isNaN(number)) {
-            setFilters(prev => ({ ...prev, epoch: number }))
-        }
-    }
+    // const handleInputBlur = () => {
+    //     const number = parseInt(tempEpochInput)
+    //     // Only set the state if the input is a valid number
+    //     if (!isNaN(number)) {
+    //         setFilters(prev => ({ ...prev, epoch: number }))
+    //     }
+    // }
 
-    const handleEpochSliderChange = (event) => {
-        const number = parseInt(event.target.value)
-        setFilters(prev => ({ ...prev, epoch: number }))
-        setTempEpochInput(event.target.value)
-    }
+    // const handleEpochSliderChange = (event) => {
+    //     const number = parseInt(event.target.value)
+    //     setFilters(prev => ({ ...prev, epoch: number }))
+    //     setTempEpochInput(event.target.value)
+    // }
 
     const handleRankChange = ([start, end]) => { setFilters(prev => ({ ...prev, selectedRankMin: start, selectedRankMax: end })) }
 
-    const handleEpochChange = (value) => { 
-        setFilters(prev => ({ ...prev, epoch: value }))
-        // setTempEpochChange(value)
-    }
+    // const handleEpochChange = (value) => { 
+    //     setFilters(prev => ({ ...prev, epoch: value }))
+    //     // setTempEpochChange(value)
+    // }
 
     // Set epoch filter value 300ms after user stops changing the slider (to prevent excessive re-renders)
     // useEffect(() => {
@@ -54,23 +54,23 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
 
     const handleSlotChange = ([start, end]) => { setFilters(prev => ({ ...prev, selectedSlotMin: start, selectedSlotMax: end }))}
 
-    const goPrevEpoch = () => {
-        if (epoch > epochRange[0]) {
-            setFilters(prev => ({ ...prev, epoch: epoch - 1 }))
-            setTempEpochInput(epoch - 1)
-        }
-    }
+    // const goPrevEpoch = () => {
+    //     if (epoch > epochRange[0]) {
+    //         setFilters(prev => ({ ...prev, epoch: epoch - 1 }))
+    //         setTempEpochInput(epoch - 1)
+    //     }
+    // }
 
-    const goNextEpoch = () => {
-        if (epoch < epochRange[1]) {
-            setFilters(prev => ({ ...prev, epoch: epoch + 1 }))
-            setTempEpochInput(epoch + 1)
-        }
-    }
+    // const goNextEpoch = () => {
+    //     if (epoch < epochRange[1]) {
+    //         setFilters(prev => ({ ...prev, epoch: epoch + 1 }))
+    //         setTempEpochInput(epoch + 1)
+    //     }
+    // }
 
-    useEffect(() => {
-        setTempEpochInput(filters.epoch)
-    }, [filters.epoch])
+    // useEffect(() => {
+    //     setTempEpochInput(filters.epoch)
+    // }, [filters.epoch])
 
     const handleRetiredChange = (e) => { setFilters(prev => ({ ...prev, retiredPoolsToggle: !prev.retiredPoolsToggle }))}
 
@@ -133,19 +133,19 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
                         onChange={handleSlotChange} />
                         </div>
                 {/* Epoch selector */}
-                <Slider 
+                {/* <Slider 
                     step={1}
                     className='t-slider' 
                     value={filters.epoch} 
                     min={epochRange[0]} max={epochRange[1]}
-                    onChange={handleEpochSliderChange} />
-                <div className="flex items-center justify-center space-x-4 mt-2">
+                    onChange={handleEpochSliderChange} /> */}
+                {/* <div className="flex items-center justify-center space-x-4 mt-2">
                     <button type="button" onClick={goPrevEpoch} className="bg-teal-600 hover:bg-gray-500 text-base p-1 rounded-full inline-flex items-center cursor-pointer" disabled={epoch <= epochRange[0]}>
                         <svg className="w-5 h-5 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m15 19-7-7 7-7"/>
                         </svg>
                     </button>
-                    {/* <p className="text-lg bold">{filters.epoch}</p> */}
+                    <p className="text-lg bold">{filters.epoch}</p>
                     <input 
                         type="number"
                         className="bg-slate-800 text-center font-bold rounded-md" 
@@ -159,7 +159,7 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
                             <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m9 5 7 7-7 7"/>
                         </svg>
                     </button>
-                </div>
+                </div> */}
             </div>
             {/* Filters modal*/}
             {isOpen &&

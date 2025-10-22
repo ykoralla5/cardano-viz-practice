@@ -46,8 +46,8 @@
 @theme {
   /* --font-display: "Poppins", sans-serif; */
   --text-tiny: 0.625rem;
-  --text-sm: 0.875rem;
-  --text-base: 0.95rem;
+  --text-sm: 0.725rem;
+  --text-base: 0.875rem;
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;

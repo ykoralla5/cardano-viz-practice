@@ -6,7 +6,7 @@ export default function ViewToolTip({ id }) {
   const [copied, setCopied] = useState(false)
 
   // Truncate: showing first 6 and last 3 chars with ellipsis
-  const truncate = (id) => `${id.slice(0, 6)}...${id.slice(-3)}`
+  const truncate = (id) => `${id.slice(0, 10)}...${id.slice(-6)}`
 
   const copyIcon = (
     <svg className="w-6 h-6 text-gray-800 dark:stroke-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -41,7 +41,7 @@ export default function ViewToolTip({ id }) {
       style="dark"
     >
       <span
-        className="cursor-pointer select-none truncate max-w-[150px] block"
+        className="cursor-pointer select-none truncate max-w-[150px] block text-sm text-gray-300"
         onClick={handleCopy}
         tabIndex={0}
         onKeyDown={(e) => {
