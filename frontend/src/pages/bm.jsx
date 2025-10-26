@@ -44,7 +44,6 @@ export default function BubbleMap() {
     const toggleTopXModal = () => setIsTopXModalOpen(prev => !prev)
     const toggleEpochList = () => setEpochListOpen(prev => !prev)
     const toggleEpochData = () => setEpochDataOpen(prev => !prev)
-    // const toggleEpochStatsModal = () => setEpochStatsModalOpen(prev => !prev)
 
     // Constants
     const [epochRange, setEpochRange] = useState([210, 560])
@@ -58,7 +57,6 @@ export default function BubbleMap() {
             setRawData(response)
             setMovementData(response[0]['delegation_movements'])
             setPoolData(response[0]['pool_stats'])
-            // setEpochParamData(response[0]['epoch_params'])
             setEpochRange(response[0]['min_max_epoch'])
         }
         catch (err) {
@@ -106,18 +104,13 @@ export default function BubbleMap() {
             .range([0, 100])
     }, [poolData])
 
-    const saturationScale = useMemo(() => {
-        if (!poolData.length) return () => "#ccc"
-        return d3.scaleLinear()
-            .domain([d3.max(poolData, d => d.saturation_ratio), d3.min(poolData, d => d.saturation_ratio)]) // inverted so that higher saturation ratio = less saturated color
-            .range([0, 1])
-    }, [poolData])
+    
 
     const linkTransparencyScale = useMemo(() => {
         if (!movementData.length) return () => 1
         return d3.scaleSqrt()
             .domain([d3.min(movementData, d => d.amount), d3.max(movementData, d => d.amount)])
-            .range([0.25, 1])
+            .range([0.5, 1])
     }, [movementData])
 
     const linkWidthScale = useMemo(() => {
@@ -136,9 +129,37 @@ export default function BubbleMap() {
             .map((pool, i) => ({
                 ...pool,
                 rank: i + 1,
-                radius: radiusScale(pool.total_stake)
+                radius: radiusScale(pool.total_stake),
+                saturation_percent: (pool.total_stake/(currentEpochData.saturation_point ))*100
             }))
-    }, [poolData])
+    }, [poolData, currentEpochData])
+
+    const saturationScale = useMemo(() => {
+        if (!rankedNodes.length) return () => "#ccc"
+        // return d3.scaleLinear()
+        //     .domain([d3.max(rankedNodes, d => d.saturation_percent), 50, 25, d3.min(rankedNodes, d => d.saturation_percent)]) // inverted so that higher saturation ratio = less saturated color
+        //     .range([0, 1])
+
+        const minSat = d3.min(rankedNodes, d => d.saturation_percent)
+    const maxSat = d3.max(rankedNodes, d => d.saturation_percent)
+
+        return (saturation) => {
+        if (saturation <= 100) {
+            // 0-100%: green -> yellow -> red
+            // normalize 0-100% to 0-1 for RdYlGn
+            const t = 1 - saturation / 100
+            return d3.interpolateYlGn(t)
+        } else {
+            // above 100%: red -> dark red
+            // normalize 100-maxSat to 0-1
+            const t = Math.min((saturation - 100) / (maxSat - 100), 1)
+            // const t = 1 - saturation / 100
+            return d3.interpolateReds(t)
+            // ("#ff9900", "#8b0000")(t) // bright red -> dark red
+            // ["#fff5f0","#fff4ef","#fff4ee","#fff3ed","#fff2ec","#fff2eb","#fff1ea","#fff0e9","#fff0e8","#ffefe7","#ffeee6","#ffeee6","#ffede5","#ffece4","#ffece3","#ffebe2","#feeae1","#fee9e0","#fee9de","#fee8dd","#fee7dc","#fee6db","#fee6da","#fee5d9","#fee4d8","#fee3d7","#fee2d6","#fee2d5","#fee1d4","#fee0d2","#fedfd1","#feded0","#feddcf","#fedccd","#fedbcc","#fedacb","#fed9ca","#fed8c8","#fed7c7","#fdd6c6","#fdd5c4","#fdd4c3","#fdd3c1","#fdd2c0","#fdd1bf","#fdd0bd","#fdcfbc","#fdceba","#fdcdb9","#fdccb7","#fdcbb6","#fdc9b4","#fdc8b3","#fdc7b2","#fdc6b0","#fdc5af","#fdc4ad","#fdc2ac","#fdc1aa","#fdc0a8","#fcbfa7","#fcbea5","#fcbca4","#fcbba2","#fcbaa1","#fcb99f","#fcb89e","#fcb69c","#fcb59b","#fcb499","#fcb398","#fcb196","#fcb095","#fcaf94","#fcae92","#fcac91","#fcab8f","#fcaa8e","#fca98c","#fca78b","#fca689","#fca588","#fca486","#fca285","#fca183","#fca082","#fc9e81","#fc9d7f","#fc9c7e","#fc9b7c","#fc997b","#fc987a","#fc9778","#fc9677","#fc9475","#fc9374","#fc9273","#fc9071","#fc8f70","#fc8e6f","#fc8d6d","#fc8b6c","#fc8a6b","#fc8969","#fc8868","#fc8667","#fc8565","#fc8464","#fb8263","#fb8162","#fb8060","#fb7f5f","#fb7d5e","#fb7c5d","#fb7b5b","#fb795a","#fb7859","#fb7758","#fb7657","#fb7455","#fa7354","#fa7253","#fa7052","#fa6f51","#fa6e50","#fa6c4e","#f96b4d","#f96a4c","#f9684b","#f9674a","#f96549","#f86448","#f86347","#f86146","#f86045","#f75e44","#f75d43","#f75c42","#f65a41","#f65940","#f6573f","#f5563e","#f5553d","#f4533c","#f4523b","#f4503a","#f34f39","#f34e38","#f24c37","#f24b37","#f14936","#f14835","#f04734","#ef4533","#ef4433","#ee4332","#ed4131","#ed4030","#ec3f2f","#eb3d2f","#eb3c2e","#ea3b2d","#e93a2d","#e8382c","#e7372b","#e6362b","#e6352a","#e5342a","#e43229","#e33128","#e23028","#e12f27","#e02e27","#df2d26","#de2c26","#dd2b25","#dc2a25","#db2924","#da2824","#d92723","#d72623","#d62522","#d52422","#d42321","#d32221","#d22121","#d12020","#d01f20","#ce1f1f","#cd1e1f","#cc1d1f","#cb1d1e","#ca1c1e","#c91b1e","#c71b1d","#c61a1d","#c5191d","#c4191c","#c3181c","#c2181c","#c0171b","#bf171b","#be161b","#bd161a","#bb151a","#ba151a","#b91419","#b81419","#b61419","#b51319","#b41318","#b21218","#b11218","#b01218","#ae1117","#ad1117","#ac1117","#aa1017","#a91016","#a71016","#a60f16","#a40f16","#a30e15","#a10e15","#a00e15","#9e0d15","#9c0d14","#9b0c14","#990c14","#970c14","#960b13","#940b13","#920a13","#900a13","#8f0a12","#8d0912","#8b0912","#890812","#870811","#860711","#840711","#820711","#800610","#7e0610","#7c0510","#7a0510","#78040f","#76040f","#75030f","#73030f","#71020e","#6f020e","#6d010e","#6b010e","#69000d","#67000d"]
+        }
+    }
+    }, [rankedNodes])
 
     // Derive min and max stake held by a pool in current epoch
     const minMaxRank = useMemo(() => {
@@ -180,8 +201,7 @@ export default function BubbleMap() {
     const { finalNodes, finalLinks } = useMemo(() => {
         const nodeIds = new Set(filteredNodes.map(p => p.pool_id))
         const links = filteredLinks
-            .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id)) 
-            // .filter(link => link.movement_type === 'REDELEGATION') // Show only redelegations on visualization
+            .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id))
             .map(link => ({
                 tx_id: link.tx_id,
                 slot_no: link.slot_no,
@@ -197,8 +217,15 @@ export default function BubbleMap() {
                 })
             )
 
-        const nodes = filteredNodes
+        let nodes = filteredNodes
             .filter(n => links.some(l => l.source === n.pool_id || l.target === n.pool_id))
+
+        // Include selected element so that it always shows when moving from epoch to epoch
+        // if (selectedElement && !nodes.some(n => n.pool_id === selectedElement.pool_id)) {
+        //     const selectedNode = poolData.find(pool => pool.pool_id === selectedElement?.id)
+        //     nodes = [...nodes, selectedNode]  
+        // }
+
         // If delegationChangedToggle is off, return all filtered nodes; if on, return only nodes that have links
         return { finalNodes: filters.delegationChangedToggle ? nodes : filteredNodes, finalLinks: links }
     }, [filteredNodes, filteredLinks])
@@ -262,12 +289,28 @@ export default function BubbleMap() {
         
     }, [selectedElement, finalNodes, finalLinks])
 
-    const onSearch = useCallback((value) => {
-        const found = filteredNodes.find(node => node.pool_id === value)
+    const handleSearch = useCallback((e) => {
+        e.preventDefault()
+        const searchTerm = searchQuery.trim().toLowerCase()
+
+        const found = filteredNodes.find(
+            node =>
+            {
+                const name = typeof node.name === "string" ? node.name.toLowerCase() : ""
+                const ticker = typeof node.ticker === "string" ? node.ticker.toLowerCase() : ""
+                const view = typeof node.pool_view === "string" ? node.pool_view.toLowerCase() : ""
+                const homepage = typeof node.homepage === "string" ? node.homepage.toLowerCase() : ""
+
+        return (
+            name.includes(searchTerm) || ticker.includes(searchTerm) || view.includes(searchTerm) || homepage.includes(searchTerm)
+        ) 
+            }
+                       
+        )
         if (found) {
-            setSelectedElement(found)
+            setSelectedElement({type: 'pool', id: found.pool_id})
         } else {
-            alert("Pool not found in the current selection. Please adjust the filters or check the Pool ID.")
+            alert("No pool found with that name, ticker or id.")
         }
     })
 
@@ -280,21 +323,19 @@ export default function BubbleMap() {
     return (
         <main className="font-display text-base flex-grow relative w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
-                <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isFilterModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleFilterModal}>Filters</button>
-                {/* <div>    
-                    <div>
-                    <label for="success" class="block mb-2 text-sm font-medium text-green-700 dark:text-green-500">Your name</label>
-                    <input
-                        type="text"
-                        id="success"
-                        // value={searchQuery}
-                        // onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={handleEnter}
-                        placeholder="Search Pool id"
-                        className="bg-green-50 border border-green-500 text-green-900 dark:text-green-400 placeholder-green-700 dark:placeholder-green-500 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2 dark:bg-gray-700 dark:border-green-500"/>
-                    <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
-                    </div>
-                </div> */}
+                <div className="flex gap-5">
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isFilterModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleFilterModal}>Filters</button>
+                <div className="relative w-100">
+                    <form onSubmit={handleSearch} className="flex gap-2">
+                        <input type="search" id="search" className="block p-2.5 w-full z-1 text-base text-gray-900 bg-gray-50 rounded-lg rounded-s-gray-100 rounded-s-2 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:border-blue-500" value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search by pool name, ticker, id or homepage..." />
+                        <button type="submit" className="absolute top-0 end-0 p-2.5 z-10 h-full text-sm font-medium text-white bg-teal-500 rounded-e-lg border border-teal-700 hover:bg-teal-800 focus:ring-4 focus:outline-none focus:ring-teal-300 dark:bg-teal-600 dark:hover:bg-teal-700 dark:focus:ring-teal-800"><svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                        </svg></button>
+                    </form>
+                </div>
+                </div>
                 <div className="flex gap-5">
                     <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochDataOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochData}>Epoch statistics</button>
                     <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochListOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochList}>Epoch: {filters.epoch}</button>

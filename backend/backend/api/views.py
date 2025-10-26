@@ -44,6 +44,7 @@ def get_delegation_summary(epoch_number):
 
     print("Took " + str(time.time() - start_time_3) + " seconds to flatten to set.")
 
+    # 
     nearest_lower_stake_qs = models.PoolStatsSummary.objects \
             .filter(epoch_no__lte=epoch_number-2, pool_id__in=pool_ids) \
             .order_by('pool_id', '-epoch_no') \
@@ -152,7 +153,7 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
     if missing_ids:
 
         # Get missing data by keeping missing ids and convert dict to list of dicts
-        missing_data = [ {"pool_id": k, "stake": v} for k, v in pool_stakes.items() if k in missing_ids ]
+        missing_data = [ {"pool_id": k, "total_stake": v} for k, v in pool_stakes.items() if k in missing_ids ]
         
         pool_views = {
             pool_id: {"pool_view": pool_view, "pledge": pledge}
@@ -310,7 +311,7 @@ def get_epochs(request):
             }
 
     # Sort by epoch numbers
-    final_epochs = sorted(existing_epochs_map.items())
+    final_epochs = reversed(sorted(existing_epochs_map.items()))
     return Response(final_epochs)
 
 @api_view(['GET'])

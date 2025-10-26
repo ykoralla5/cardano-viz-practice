@@ -5,7 +5,6 @@ export default function EpochData({ isOpen, onClose, currentEpochData }) {
 
     if (isOpen) console.log(currentEpochData)
     if (!currentEpochData) return
-    
 
     return (
         <>
@@ -22,7 +21,9 @@ export default function EpochData({ isOpen, onClose, currentEpochData }) {
                         <p>Pool count <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.pool_count)}</span></p>
                         <p>Total Active Stake <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(currentEpochData.total_active_stake)}</span></p>
                         <p>Total delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
-                        <p>Saturation point <span className="text-gray-900 dark:text-white">{Math.round(currentEpochData.saturation_point * 100) / 100}</span></p>
+                        <p>Saturation point <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(Math.round(currentEpochData.saturation_point * 100) / 100)}</span></p>
+                        <p>Optimal pool count <span className="text-gray-900 dark:text-white">{currentEpochData.optimal_pool_count}</span></p>
+                        <p>Decentralisation <span className="text-gray-900 dark:text-white">{currentEpochData.decentralisation}</span></p>
                     </div>
                 </div>
             )}

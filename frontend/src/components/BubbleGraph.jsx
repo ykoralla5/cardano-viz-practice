@@ -16,6 +16,9 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
     const svgReference = useRef(null)
     const bubblesRef = useRef(null)
     const linksRef = useRef(null)
+    const textRef = useRef(null)
+
+    // const displayedLinks = links.filter(link => link.movement_type === "REDELEGATION");
 
     useEffect(() => {
 
@@ -38,7 +41,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
 
         svg.call(
             d3.zoom()
-                .scaleExtent([0.25, 5]) // min/max zoom
+                .scaleExtent([0.1, 5]) // min/max zoom
                 .on("zoom", (event) => {
                     g.attr("transform", event.transform)
                 })
@@ -49,7 +52,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         // Add links
         linksRef.current = linksLayer
             .selectAll("line")
-            .data(links.filter(l => l.movement_type === 'REDELEGATION'))
+            .data(links.filter(l => l.movement_type === "REDELEGATION"))
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", l => linkTransparencyScale(l.movement_amount)) 
@@ -77,17 +80,47 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         const bubblesLayer = g.append("g")
 
         // Add nodes as bubbles
-        bubblesRef.current = bubblesLayer
-            .selectAll("circle")
+        const nodeGroups = bubblesLayer
+            .selectAll(".bubbles-group")
             .data(nodes)
-            .join("circle")
-            .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "red" : d3.interpolateRdYlGn(saturationScale(p.saturation_ratio))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
-            .attr("r", p => radiusScale(p.total_stake))
+            .join("g")
+            .attr("class", "bubbles-group")
             .on("click", (event, p) => {
                 setSelectedElement({"type": "pool", "id": p.pool_id})
                 setSelectedElementData({"data": null, "delegationData": null})
             })
             .on("mouseover", function(p) { d3.select(this).style("cursor", "pointer")})
+
+        bubblesRef.current = nodeGroups
+
+        nodeGroups.append("text")
+            .text(p => p.pool_id)
+            .attr("text-anchor", "middle")
+            .attr("dy", "0.3em")
+            .attr("fill", "white")
+            .style("font-size", "100px")
+            .style("pointer-events", "none")
+            
+        nodeGroups.append("circle")
+            .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "red" : saturationScale(p.saturation_percent))
+                // d3.interpolateRdYlGn(saturationScale(p.saturation_percent))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
+            .attr("r", p => p.radius)
+            
+            
+        
+
+        // const textLayer = g.append("text")
+
+        // textRef.current = textLayer
+        //     .selectAll("text")
+        //     .data(nodes)
+        //     .jo
+
+            // 3. Append the text label to the same group
+        // bubblesRef.current.append("text")
+        //     .attr("dy", "0.3em") // Vertically center the text
+        //     .attr("text-anchor", "middle") // Horizontally center the text
+        //     .text(d => d.ticker); // Use the text data for the label
             // .call(drag(simulation))
         //     .attr("stroke", d => 
         //         // d.is_active === 'false' ? "red" : "white"
@@ -132,7 +165,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             // })
 
         const retiredPoolLabels = svg.selectAll("text")
-            .data(nodes.filter(d => d.is_active === 'false' && d.delegator_count !== 0))
+            .data(nodes.filter(d => d.is_active === 'false'))
             .join("text")
             .text("RETIRED")
             .attr("font-size", "100px")
@@ -141,21 +174,24 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(p => p.pool_id).distance(0)) // normalize
-            .force("charge", d3.forceManyBody().strength(-50))
-            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 20).iterations(2)) // to prevent bubbles from overlapping
+            .force("link", d3.forceLink(links).id(p => p.pool_id).distance(10)) // normalize
+            .force("charge", d3.forceManyBody().strength(-10))
+            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 40).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
-            .force("x", d3.forceX().strength(0.05))
-            .force("y", d3.forceY().strength(0.05))
+            .force("x", d3.forceX().strength(0.5))
+            .force("y", d3.forceY().strength(0.5))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
+            
 
-        bubblesRef.current.append("title").text(p => p.pool_id)
+        // bubblesRef.current.append("title").text(p => p.ticker)
+        // bubblesRef.current.append("text").text(p => p.ticker)
 
         simulation.on("tick", () => {
 
             bubblesRef.current
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y)
+                .attr("transform", d => `translate(${d.x}, ${d.y})`)
+                // .attr("x", d => d.x)
+                // .attr("y", d => d.y)
                 
             // Shorten links to not overlap with bubbles
             linksRef.current
@@ -174,9 +210,9 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                     return d.target.y - (dy / dist) * d.target.radius
                 })
 
-            retiredPoolLabels
-                .attr("x", d => d.x)
-                .attr("y", d => d.y)
+            // retiredPoolLabels
+            //     .attr("x", d => d.x)
+            //     .attr("y", d => d.y)
         })
 
         simulation.on("end", () => {

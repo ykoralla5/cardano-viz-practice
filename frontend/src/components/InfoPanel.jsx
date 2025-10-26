@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import * as utils from '../utils/dataTransformers'
-import ViewToolTip from '../components/ViewToolTip'
+import DelegationList from './DelegationList'
 
 export default function InfoPanel({ selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) {
-    const [isModalOpen, setIsModalOpen] = useState(false)
+
+    if (!selectedElementData || !selectedElementData.data) {
+        return (
+            <div className=""></div>
+        )
+    }
+
+    const [isDelegationModalOpen, setIsDelegationModalOpen] = useState(false)
 
     const handleInfoCloseClick = () => {
         setSelectedElement(null)
@@ -11,13 +18,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
     }
 
     const handleDelegationCloseClick = () => {
-        setIsModalOpen(!isModalOpen)
-    }
-
-    if (!selectedElementData || !selectedElementData.data) {
-        return (
-            <div className=""></div>
-        )
+        setIsDelegationModalOpen(!isDelegationModalOpen)
     }
 
     const data = selectedElementData.data
@@ -46,6 +47,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                             <p>Active Stake <span className="text-gray-900 dark:text-white">₳ {!data.is_active && data.delegator_count === 0 ? utils.formatAda(data.total_stake) + ' !Stake from previous epoch!' : utils.formatAda(data.total_stake)} (#{data.rank})</span></p>
                             <p># Delegators <span className="text-gray-900 dark:text-white">{data.delegator_count}</span></p>
                             <p>Operator pledge <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.pledge)}</span></p>
+                            <p>Saturation percent <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_percent * 100) / 100} %</span></p>
                             <p>Saturation ratio <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_ratio * 100) / 100}</span></p>
                             <p>Actual / Expected # of blocks minted <span className="text-gray-900 dark:text-white">{data.actual_blocks} / {Math.round(data.expected_blocks * 100) / 100}</span></p>
                             <p>Performance <span className={data.performance_ratio < 1 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>{Math.round(data.performance_ratio * 100) / 100}</span></p>
@@ -69,55 +71,12 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                         </>
                     )}
                     </div>
-                    {isModalOpen && type === "pool" && (
-                        <div className="fixed inset-0 flex items-center justify-center z-20" onClick={handleDelegationCloseClick}>
-                            <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-20 text-gray-600 dark:text-white w-[60vw] max-h-[60vh]" onClick={e => e.stopPropagation()}>
-                                <div className="p-1 flex-shrink-0 flex justify-between items-center">
-                                    <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {data.name} [{data.ticker}]</p>
-                                    <button type="button" className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleDelegationCloseClick}>Close</button>
-                                </div>
-                                <div className="flex-grow overflow-y-auto p-2">
-                                {delegationData.length === 0 ? (
-                                    <p>No delegations found for this pool in the current dataset.</p>
-                                ) : (
-                                    <table className="min-w-full border border-gray-300 dark:border-gray-600">
-                                        <thead>
-                                            <tr>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-25">Date</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-50">From Pool</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left w-50">To Pool</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Delegation by</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Amount (₳)</th>
-                                                <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 text-left">Type</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {delegationData.sort(d => d.slot_no).map((d, index) => (
-                                                <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-700"}>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{utils.translateSlot(d.slot_no)}</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
-                                                        <p className="font-semibold">{d.source.name} [{d.source.ticker}]</p>
-                                                        <ViewToolTip id={d.source.pool_view} key={d.slot_no}/>
-                                                        {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span></p>}
-                                                    </td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
-                                                        <p className="font-semibold">{d.target.name} [{d.target.ticker}]</p>
-                                                        <ViewToolTip id={d.target.pool_view} key={d.slot_no}/>
-                                                        {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-green-500 font-bold">- {d.dest_stake_change_percent} %</span></p>}
-                                                        </td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
-                                                        <ViewToolTip id={d.addr_view} key={d.slot_no} />
-                                                    </td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(d.movement_amount)}</td>
-                                                    <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{d.movement_type}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                                </div>
-                            </div>
-                        </div>
+                    {isDelegationModalOpen && type === "pool" && (
+                        <DelegationList
+                            isOpen={isDelegationModalOpen} 
+                            onClose={handleDelegationCloseClick}
+                            delegationData={delegationData}
+                            poolData={data} />
                     )}
                 </div>
             )}

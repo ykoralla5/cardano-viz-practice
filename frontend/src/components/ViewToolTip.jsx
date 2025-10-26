@@ -1,12 +1,24 @@
 import { useState } from 'react'
-import { Tooltip } from 'flowbite-react'
-// import { styled } from '@mui/material/styles'
 
-export default function ViewToolTip({ id }) {
+export default function ViewToolTip({ id, key }) {
   const [copied, setCopied] = useState(false)
+  const [hover, setHover] = useState(false)
 
-  // Truncate: showing first 6 and last 3 chars with ellipsis
-  const truncate = (id) => `${id.slice(0, 10)}...${id.slice(-6)}`
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(id).then(() => {
+      setCopied(true)
+      // reset copy message
+      setTimeout(() => { setCopied(false)}, 2000) 
+    })
+    }
+    catch (err) {
+      console.error("Copy failed:", err)
+    }
+  }
+
+  // Showing first 9 and last 3 chars
+  const truncate = (id) => `${id.slice(0, 9)}...${id.slice(-3)}`
 
   const copyIcon = (
     <svg className="w-6 h-6 text-gray-800 dark:stroke-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -15,43 +27,29 @@ export default function ViewToolTip({ id }) {
 
   )
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(id).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000) // reset copy message
-    })
-    console.log(copied)
-  }
-
   return (
-    <Tooltip trigger="hover"
-      content={
-        <>
-        {/* <span>blah</span> */}
-           {//copied ? 
-           //( 
-            // <span className="flex items-center space-x-1"><span>Copied!</span>{/* {copyIcon} */}</span>
-          // ) : (
-            // <span className="flex items-center space-x-1"><span>{id}</span>{/* {copyIcon} */}</span>
-          //)
-          }
-        </>
-      }
-      placement="top"
-      style="dark"
+    <div
+      className="relative flex items-center gap-2 font-mono cursor-default"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
     >
-      <span
-        className="cursor-pointer select-none truncate max-w-[150px] block text-sm text-gray-300"
+      {/* truncated id */}
+      <span>{truncate(id)}</span>
+
+      {/* copy icon */}
+      <button
         onClick={handleCopy}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleCopy()
-        }}
-        role="button"
-        aria-label="Copy pool ID"
+        className="text-gray-500 hover:text-blue-600 transition-colors cursor-pointer"
       >
-        {truncate(id)}
-      </span>
-    </Tooltip>
+        {copyIcon}
+      </button>
+
+      {/* tooltip */}
+      {hover && (
+        <div className="absolute left-1/2 -translate-x-1/2 -top-6 bg-gray-500 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
+          {copied ? "Copied!" : id}
+        </div>
+      )}
+    </div>
   )
 }

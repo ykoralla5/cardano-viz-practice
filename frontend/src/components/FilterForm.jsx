@@ -1,6 +1,5 @@
 import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
-import { use, useCallback, useEffect, useState } from 'react'
 import * as utils from '../utils/dataTransformers'
 import { useDebounce } from 'use-debounce'
 import { every } from 'd3'
@@ -84,26 +83,6 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
 
     return (
         <div className="w-full h-full absolute inset-0 text-gray-600 dark:text-white text-base">
-            {/* <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={handleCloseClick}>Filters</button> */}
-            {/* Top buttons */}
-            {/* <div className="absolute w-full top-4 z-10 px-4 flex justify-between space-x-2">
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer" onClick={handleCloseClick}>Filters</button>
-                <div>    
-                    <div>
-                    {/* <label for="success" class="block mb-2 text-sm font-medium text-green-700 dark:text-green-500">Your name</label> */}
-                    {/* <input
-                        type="text"
-                        id="success"
-                        // value={searchQuery}
-                        // onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyDown={handleEnter}
-                        placeholder="Search Pool id"
-                        className="bg-green-50 border border-green-500 text-green-900 dark:text-green-400 placeholder-green-700 dark:placeholder-green-500 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2 dark:bg-gray-700 dark:border-green-500"/> */}
-                    {/* <p class="mt-2 text-sm text-green-600 dark:text-green-500"><span class="font-medium">Well done!</span> Some success message.</p>
-                    </div>
-                </div>*}
-                <button className="bg-white dark:bg-gray-600 text-base p-2 rounded-sm text-gray-600 dark:text-white hover:bg-teal-400 hover:text-black cursor-pointer">Top 10</button>
-            </div> */}
             <div className="z-1 absolute left-10 right-10 bottom-2.5 bg-white dark:bg-gray-600 px-5 py-1 rounded-lg flex flex-col justify-center">
                 {/* Slot selector */}
                 <div className="flex flex-col justify-center pb-5">
