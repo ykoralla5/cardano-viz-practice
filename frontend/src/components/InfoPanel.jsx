@@ -39,7 +39,6 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                     <div className="overflow-y-auto max-h-[60vh]">
                     {type === "pool" && (
                         <>
-                            
                             <p>Name <span className="text-gray-900 dark:text-white">{data.name} [{data.ticker}]</span></p>
                             <p>Homepage <a className="font-medium text-blue-600 dark:text-blue-500 hover:underline" href={data.homepage} target="_blank">{data.homepage}</a></p>
                             <p>Description <span className="text-gray-900 dark:text-white">{data.description}</span></p>

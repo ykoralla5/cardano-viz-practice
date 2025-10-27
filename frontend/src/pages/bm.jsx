@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
 import InfoPanel from '../components/InfoPanel'
@@ -221,10 +221,10 @@ export default function BubbleMap() {
             .filter(n => links.some(l => l.source === n.pool_id || l.target === n.pool_id))
 
         // Include selected element so that it always shows when moving from epoch to epoch
-        // if (selectedElement && !nodes.some(n => n.pool_id === selectedElement.pool_id)) {
-        //     const selectedNode = poolData.find(pool => pool.pool_id === selectedElement?.id)
-        //     nodes = [...nodes, selectedNode]  
-        // }
+        if (selectedElement && !nodes.some(n => n.pool_id === selectedElement.id)) {
+            const selectedNode = rankedNodes.find(pool => pool.pool_id === selectedElement?.id)
+            nodes = [...nodes, selectedNode]  
+        }
 
         // If delegationChangedToggle is off, return all filtered nodes; if on, return only nodes that have links
         return { finalNodes: filters.delegationChangedToggle ? nodes : filteredNodes, finalLinks: links }
@@ -263,23 +263,28 @@ export default function BubbleMap() {
         const fetchElementData = async () => {
             try {
                 if (selectedElement) {
-            const {type, id} = selectedElement
-            if (id) {
-                let data = null
-                let delegationData = null
-                if (type === 'pool') {
-                    data = finalNodes.find(pool => pool.pool_id === id)
-                    delegationData = finalLinks.filter(l => l.source.pool_id === id || l.target.pool_id === id)
+                    const { type, id } = selectedElement
+                    if (id) {
+                        let data = null
+                        let delegationData = null
+                        if (type === 'pool') {
+                            data = finalNodes.find(p => p.pool_id === id)
+                            delegationData = finalLinks.filter(l => l.source === id || l.target === id)
+                            .map(l => ({
+                                ...l,
+                                sourceData: finalNodes.find(n => n.pool_id === l.source),
+                                targetData: finalNodes.find(n => n.pool_id === l.target)
+                            }))
+                        }
+                        else if (type === 'link') {
+                            data = finalLinks.find(l => l.tx_id === id)
+                            delegationData = null
+                        }
+                        setSelectedElementData({ "data": data || null, "delegationData": delegationData || null })
+                    }
+                } else {
+                    setSelectedElementData(null)
                 }
-                else if (type === 'link') {
-                    data = finalLinks.find(link => link.tx_id === id)
-                    delegationData = null
-                }
-                setSelectedElementData({"data": data || null, "delegationData": delegationData || null})
-            }
-        } else {
-            setSelectedElementData(null)
-        }
             }
             catch (err) {
                 console.error("Error fetching selected element data: ", err)
@@ -315,6 +320,8 @@ export default function BubbleMap() {
     })
 
     const nodesCount = useMemo(() => finalNodes.length, [finalNodes])
+    const linksCount = useMemo(() => finalLinks.length, [finalLinks])
+
 
     // if (isLoading) return <ClipLoader color="white" loading={isLoading} size={100} aria-label="Loading Spinner" data-testid="loader" />
     if (error) return <div className="text-gray-500 dark:text-white">Error: {error.message}</div>
@@ -374,6 +381,8 @@ export default function BubbleMap() {
                         isOpen={isEpochDataOpen}
                         onClose={toggleEpochData}
                         currentEpochData={currentEpochData}
+                        nodesCount={nodesCount}
+                        linksCount={linksCount}
                     />
                     <EpochList
                         isOpen={isEpochListOpen}

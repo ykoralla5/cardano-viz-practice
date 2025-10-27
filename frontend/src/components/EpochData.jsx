@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import * as utils from '../utils/dataTransformers'
 
-export default function EpochData({ isOpen, onClose, currentEpochData }) {
+export default function EpochData({ isOpen, onClose, currentEpochData, nodesCount, linksCount }) {
 
     if (isOpen) console.log(currentEpochData)
     if (!currentEpochData) return
@@ -17,13 +17,16 @@ export default function EpochData({ isOpen, onClose, currentEpochData }) {
                         <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                     </div>
                     <div className="overflow-y-auto max-h-[60vh]">
+                        <p>Start date <span className="text-gray-900 dark:text-white">{currentEpochData.start_time}</span></p>
+                        <p>End date <span className="text-gray-900 dark:text-white">{currentEpochData.end_time}</span></p>
                         <p>Phase <span className="text-gray-900 dark:text-white">{currentEpochData.phase} Era</span></p>
                         <p>Pool count <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.pool_count)}</span></p>
                         <p>Total Active Stake <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(currentEpochData.total_active_stake)}</span></p>
-                        <p>Total delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
+                        <p>#Delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
                         <p>Saturation point <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(Math.round(currentEpochData.saturation_point * 100) / 100)}</span></p>
                         <p>Optimal pool count <span className="text-gray-900 dark:text-white">{currentEpochData.optimal_pool_count}</span></p>
                         <p>Decentralisation <span className="text-gray-900 dark:text-white">{currentEpochData.decentralisation}</span></p>
+                        <p>Showing <span className="text-gray-900 dark:text-white">{nodesCount}</span> nodes and <span className="text-gray-900 dark:text-white">{linksCount}</span> delegations.</p>
                     </div>
                 </div>
             )}

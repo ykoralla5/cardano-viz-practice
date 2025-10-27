@@ -18,7 +18,22 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
     const linksRef = useRef(null)
     const textRef = useRef(null)
 
-    // const displayedLinks = links.filter(link => link.movement_type === "REDELEGATION");
+    // Merge delegations between same pools and sum their movement_amount
+    const nodeById = new Map(nodes.map(n => [n.pool_id, n]))
+    const redelegationLinks = links.filter(l => l.movement_type === "REDELEGATION")
+
+    const collapsedLinks = Array.from(
+        d3.group(redelegationLinks, l => `${l.source}-${l.target}`),
+        ([key, group]) => ({
+            source: nodeById.get(group[0].source),
+            // source_pool_view: group[0].source.pool_view,
+            target: nodeById.get(group[0].target),
+            // target_pool_view: group[0].target.pool_view,
+            count: group.length,
+            movement_amount: d3.sum(group, g => g.movement_amount || 0),
+            originalLinks: group
+        })
+    )
 
     useEffect(() => {
 
@@ -52,7 +67,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         // Add links
         linksRef.current = linksLayer
             .selectAll("line")
-            .data(links.filter(l => l.movement_type === "REDELEGATION"))
+            .data(collapsedLinks)
             .enter().append("line")
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", l => linkTransparencyScale(l.movement_amount)) 
@@ -174,14 +189,13 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(p => p.pool_id).distance(10)) // normalize
+            .force("link", d3.forceLink(collapsedLinks).id(p => p.pool_id).distance(10)) // normalize
             .force("charge", d3.forceManyBody().strength(-10))
             .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 40).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
             .force("x", d3.forceX().strength(0.5))
             .force("y", d3.forceY().strength(0.5))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
-            
 
         // bubblesRef.current.append("title").text(p => p.ticker)
         // bubblesRef.current.append("text").text(p => p.ticker)
@@ -234,15 +248,15 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                     if (!selectedElement || selectedElement.type == "link") return 0.95
                     // If a pool is selected, highlight it and its connections, fade out others
                     if (selectedElement.type === "pool" && selectedElementData?.delegationData !== null) {
-                        return p.pool_id === selectedElement?.id || selectedElementData?.delegationData?.some(l => (l.source.pool_id === selectedElement?.id && l.target.pool_id === p.pool_id) || (l.target.pool_id === selectedElement?.id && l.source.pool_id === p.pool_id)) ? 0.95 : 0.15
-                    }
+                        return p.pool_id === selectedElement?.id || selectedElementData?.delegationData?.some(l => (l.source === selectedElement?.id && l.target === p.pool_id) || (l.target === selectedElement?.id && l.source === p.pool_id)) ? 0.95 : 0.15
+                     }
                     return 1})
         }
         
         if (linksRef.current) {
             linksRef.current
-                .style("stroke", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.source.pool_id && selectedElementData?.data?.target?.pool_id === d.target.pool_id) ? "yellow" : "white")
-                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.source.pool_id && selectedElementData?.data?.target?.pool_id === d.target.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
+                .style("stroke", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.sourceData.pool_id && selectedElementData?.data?.targetData?.pool_id === d.targetData.pool_id) ? "yellow" : "white")
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElementData?.data?.sourceData?.pool_id === d.sourceData.pool_id && selectedElementData?.data?.targetData?.pool_id === d.targetData.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
                 .attr("display", l => {
                     if (!selectedElement) return "block"
                     if (selectedElement?.type === "pool" && selectedElementData?.delegationData !== null) {
@@ -251,7 +265,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                     }
                     if (selectedElement?.type === "link" && selectedElementData?.data !== null) {
                         // Show only the selected link
-                        return (selectedElementData?.data.source.pool_id === l.source.pool_id && selectedElementData?.data.target.pool_id === l.target.pool_id) ? "block" : "none"
+                        return (selectedElementData?.data.sourceData.pool_id === l.source.pool_id && selectedElementData?.data.targetData.pool_id === l.target.pool_id) ? "block" : "none"
                     }
                     return "block"
                 })

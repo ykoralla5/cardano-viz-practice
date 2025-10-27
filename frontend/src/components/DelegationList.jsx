@@ -1,9 +1,6 @@
 import * as utils from '../utils/dataTransformers'
 import ViewToolTip from '../components/ViewToolTip'
 import { useMemo, useState } from 'react'
-// import { ArrowUpDown, ArrowUp, ArrowDown } from "flowbite-react"
-// import { Table, TableBody, TableHead, TableHeadCell, TableBodyRow } from "flowbite-react"
-import { Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from "flowbite-react";
 
 export default function DelegationList({ isOpen, onClose, delegationData, poolData }) {
 
@@ -114,7 +111,7 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
                 {/* Table */}
                 <div className="flex-grow overflow-x-hidden overflow-y-auto p-2">
                     {filteredData.length === 0 ? (
-                        <p>No delegations found for this pool with the applied filters.</p>
+                        <p>No delegations found for this pool with the applied filters.{delegationData}</p>
                     ) : (
                         <table className="min-w-full border border-gray-300 dark:border-gray-600">
                             <thead>
@@ -132,13 +129,13 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
                                     <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-700"}>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{utils.translateSlot(d.slot_no)}</td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
-                                            <p className="font-semibold">{d.source.name} [{d.source.ticker}]</p>
-                                            <ViewToolTip id={d.source.pool_view} />
+                                            <p className="font-semibold">{d.sourceData.name} [{d.sourceData.ticker}]</p>
+                                            <ViewToolTip id={d.sourceData.pool_view} />
                                             {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span></p>}
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
-                                            <p className="font-semibold">{d.target.name} [{d.target.ticker}]</p>
-                                            <ViewToolTip id={d.target.pool_view} />
+                                            <p className="font-semibold">{d.targetData.name} [{d.targetData.ticker}]</p>
+                                            <ViewToolTip id={d.targetData.pool_view} />
                                             {d.movement_type === 'REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-green-500 font-bold">+ {d.dest_stake_change_percent} %</span></p>}
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
