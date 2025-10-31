@@ -10,7 +10,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
     const saturationScale = scales.saturationScale
     const linkTransparencyScale = scales.linkTransparencyScale
     const linkWidthScale = scales.linkWidthScale
-    const saturationPercentScale = scales.saturationPercentScale
+    // const saturationPercentScale = scales.saturationPercentScale
 
     // Refs
     const svgReference = useRef(null)
@@ -20,15 +20,14 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
 
     // Merge delegations between same pools and sum their movement_amount
     const nodeById = new Map(nodes.map(n => [n.pool_id, n]))
-    const redelegationLinks = links.filter(l => l.movement_type === "REDELEGATION")
+    const ALLOWED_MOVEMENT_TYPES = ["NON_FINALIZED_REDELEGATION", "NON_FINALIZED_REDELEGATION_PENDING", "FINALIZED_REDELEGATION"]
+    const redelegationLinks = links.filter(l => ALLOWED_MOVEMENT_TYPES.includes(l.movement_type))
 
     const collapsedLinks = Array.from(
         d3.group(redelegationLinks, l => `${l.source}-${l.target}`),
         ([key, group]) => ({
             source: nodeById.get(group[0].source),
-            // source_pool_view: group[0].source.pool_view,
             target: nodeById.get(group[0].target),
-            // target_pool_view: group[0].target.pool_view,
             count: group.length,
             movement_amount: d3.sum(group, g => g.movement_amount || 0),
             originalLinks: group
@@ -117,13 +116,10 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .style("pointer-events", "none")
             
         nodeGroups.append("circle")
-            .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "red" : saturationScale(p.saturation_percent))
+            .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "gray" : saturationScale(p.saturation_ratio))
                 // d3.interpolateRdYlGn(saturationScale(p.saturation_percent))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", p => p.radius)
             
-            
-        
-
         // const textLayer = g.append("text")
 
         // textRef.current = textLayer
@@ -189,12 +185,15 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(collapsedLinks).id(p => p.pool_id).distance(10)) // normalize
+            .force("link", d3.forceLink(collapsedLinks).id(p => p.tx_id).distance(d => {
+                // console.log(d)
+                return 10
+            })) // normalize
             .force("charge", d3.forceManyBody().strength(-10))
-            .force("collision", d3.forceCollide().radius(d => radiusScale(d.total_stake) + 40).iterations(2)) // to prevent bubbles from overlapping
+            .force("collision", d3.forceCollide().radius(p => p.radius + 40).iterations(2)) // to prevent bubbles from overlapping
             .force("center", d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
-            .force("x", d3.forceX().strength(0.5))
-            .force("y", d3.forceY().strength(0.5))
+            .force("x", d3.forceX().strength(0.5).x(p => p.pool_id === selectedElement?.id ? dimensions.width / 2 : p.x))
+            .force("y", d3.forceY().strength(0.5).y(p => p.pool_id === selectedElement?.id ? dimensions.height / 2 : p.y))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
         // bubblesRef.current.append("title").text(p => p.ticker)
@@ -202,10 +201,17 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
 
         simulation.on("tick", () => {
 
+            // bubblesRef.current
+            //     .forEach(p => {
+            //         if (p.pool_id === selectedElement?.id) {
+            //             console.log(p.pool_id, selectedElement.id)
+            //             p.x = dimensions.width / 2
+            //             p.y = dimensions.height / 2
+            //         }
+            //     })
+
             bubblesRef.current
                 .attr("transform", d => `translate(${d.x}, ${d.y})`)
-                // .attr("x", d => d.x)
-                // .attr("y", d => d.y)
                 
             // Shorten links to not overlap with bubbles
             linksRef.current
@@ -241,7 +247,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
        
         if (bubblesRef.current) {
             bubblesRef.current
-                .attr("stroke", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? "cyan" : !p.is_active ? "red" : d3.interpolateRdYlGn(saturationScale(p.saturation_ratio)))
+                .attr("stroke", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? d3.color("#00ffcc") : !p.is_active ? "gray" : saturationScale(p.saturation_ratio))
                 .attr("stroke-opacity", 0.3)
                 .attr("stroke-width", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? 5 : 2.5)
                 .attr("fill-opacity", p => {
@@ -255,8 +261,8 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         
         if (linksRef.current) {
             linksRef.current
-                .style("stroke", d => selectedElement?.type === "link" && (selectedElementData?.data?.source?.pool_id === d.sourceData.pool_id && selectedElementData?.data?.targetData?.pool_id === d.targetData.pool_id) ? "yellow" : "white")
-                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElementData?.data?.sourceData?.pool_id === d.sourceData.pool_id && selectedElementData?.data?.targetData?.pool_id === d.targetData.pool_id) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
+                .style("stroke", d => selectedElement?.type === "link" && (selectedElementData.data.source === d.source.pool_id && selectedElementData?.data?.target === d.target) ? "yellow" : "white")
+                .attr("stroke-width", d => selectedElement?.type === "link" && (selectedElementData.data.source === d.source && selectedElementData.data.target === d.target) ? linkWidthScale(d.movement_amount) + 1 : linkWidthScale(d.movement_amount))
                 .attr("display", l => {
                     if (!selectedElement) return "block"
                     if (selectedElement?.type === "pool" && selectedElementData?.delegationData !== null) {
@@ -265,7 +271,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                     }
                     if (selectedElement?.type === "link" && selectedElementData?.data !== null) {
                         // Show only the selected link
-                        return (selectedElementData?.data.sourceData.pool_id === l.source.pool_id && selectedElementData?.data.targetData.pool_id === l.target.pool_id) ? "block" : "none"
+                        return (selectedElementData?.data?.source === l.source.pool_id && selectedElementData?.data?.target === l.target.pool_id) ? "block" : "none"
                     }
                     return "block"
                 })
@@ -304,7 +310,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
 
     return (
         <div className="relative flex flex-column items-center justify-center">
-            <svg className="h-[90vh]" ref={svgReference} width={dimensions.width} height={dimensions.height}>
+            <svg className="h-[91.5vh]" ref={svgReference} width={dimensions.width} height={dimensions.height}>
                 <g className="chart-content"></g>
             </svg>
         </div> 

@@ -233,13 +233,17 @@ def get_epoch_snapshot(request):
     
     # Pool statistics in epoch
     pool_stats = get_pool_stats(epoch_number, delegations_ids, pool_stakes)
+
+    epoch_detail = get_epoch_detail(epoch_number)
     
     # Merge data
     combined = []
     combined.append({
         "delegation_movements": delegations_data,
         "pool_stats": pool_stats,
-        "min_max_epoch": min_max_epoch
+        "min_max_epoch": min_max_epoch,
+        "min_max_slot": min_max_epoch,
+        "epoch_detail": epoch_detail
     })
 
     logger.info("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot view.")
@@ -284,6 +288,8 @@ def get_epochs(request):
     MIN_EPOCH = min_max_epoch[0]
     MAX_EPOCH = min_max_epoch[1]
 
+    min_max_slot = utils.get_min_max_slot()
+
     epochs_qs = models.EpochSummary.objects \
             .values('epoch_no', 'start_time', 'end_time').distinct('epoch_no')
         
@@ -312,10 +318,19 @@ def get_epochs(request):
 
     # Sort by epoch numbers
     final_epochs = reversed(sorted(existing_epochs_map.items()))
-    return Response(final_epochs)
 
-@api_view(['GET'])
-def get_epoch_detail(request, epoch_no):
+    # Merge data
+    combined = []
+    combined.append({
+        "epochs_list": final_epochs,
+        "min_max_epoch": min_max_epoch,
+        "min_max_slot": min_max_slot
+    })
+
+    return Response(combined)
+
+# @api_view(['GET'])
+def get_epoch_detail(epoch_no):
 
     epoch_detail = get_object_or_404(models.EpochSummary, epoch_no=epoch_no)
     serializer = serializers.EpochSummarySerializer(epoch_detail)
@@ -324,4 +339,4 @@ def get_epoch_detail(request, epoch_no):
     
     # current_serialized = serializers.EpochSummarySerializer(current).data if current else None
 
-    return Response(serializer.data)
+    return serializer.data

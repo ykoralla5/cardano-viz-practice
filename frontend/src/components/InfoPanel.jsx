@@ -36,7 +36,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                         </div>
                         <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={handleInfoCloseClick}>Close</button>
                     </div>
-                    <div className="overflow-y-auto max-h-[60vh]">
+                    <div className="overflow-y-auto max-h-[45vh] py-3">
                     {type === "pool" && (
                         <>
                             <p>Name <span className="text-gray-900 dark:text-white">{data.name} [{data.ticker}]</span></p>
@@ -46,7 +46,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                             <p>Active Stake <span className="text-gray-900 dark:text-white">₳ {!data.is_active && data.delegator_count === 0 ? utils.formatAda(data.total_stake) + ' !Stake from previous epoch!' : utils.formatAda(data.total_stake)} (#{data.rank})</span></p>
                             <p># Delegators <span className="text-gray-900 dark:text-white">{data.delegator_count}</span></p>
                             <p>Operator pledge <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.pledge)}</span></p>
-                            <p>Saturation percent <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_percent * 100) / 100} %</span></p>
+                            {/* <p>Saturation percent <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_percent * 100) / 100} %</span></p> */}
                             <p>Saturation ratio <span className="text-gray-900 dark:text-white">{Math.round(data.saturation_ratio * 100) / 100}</span></p>
                             <p>Actual / Expected # of blocks minted <span className="text-gray-900 dark:text-white">{data.actual_blocks} / {Math.round(data.expected_blocks * 100) / 100}</span></p>
                             <p>Performance <span className={data.performance_ratio < 1 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>{Math.round(data.performance_ratio * 100) / 100}</span></p>
