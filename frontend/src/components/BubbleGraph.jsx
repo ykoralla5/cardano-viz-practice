@@ -6,7 +6,7 @@ import { CircleLoader } from 'react-spinners'
 export default function BubbleGraph ({ nodes, links, scales, dimensions, selectedElement, setSelectedElement, selectedElementData, setSelectedElementData })
  {
     // Scales
-    const radiusScale = scales.radiusScale
+    // const radiusScale = scales.radiusScale
     const saturationScale = scales.saturationScale
     const linkTransparencyScale = scales.linkTransparencyScale
     const linkWidthScale = scales.linkWidthScale
@@ -16,12 +16,14 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
     const svgReference = useRef(null)
     const bubblesRef = useRef(null)
     const linksRef = useRef(null)
-    const textRef = useRef(null)
+    // const textRef = useRef(null)
 
     // Merge delegations between same pools and sum their movement_amount
     const nodeById = new Map(nodes.map(n => [n.pool_id, n]))
     const ALLOWED_MOVEMENT_TYPES = ["NON_FINALIZED_REDELEGATION", "NON_FINALIZED_REDELEGATION_PENDING", "FINALIZED_REDELEGATION"]
     const redelegationLinks = links.filter(l => ALLOWED_MOVEMENT_TYPES.includes(l.movement_type))
+
+    console.time('collapse links')
 
     const collapsedLinks = Array.from(
         d3.group(redelegationLinks, l => `${l.source}-${l.target}`),
@@ -33,6 +35,8 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             originalLinks: group
         })
     )
+
+    console.timeEnd('collapse links')
 
     useEffect(() => {
 
@@ -62,12 +66,15 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             )
 
         const linksLayer = g.append("g")
+
+        console.time('add links')
         
         // Add links
         linksRef.current = linksLayer
             .selectAll("line")
             .data(collapsedLinks)
             .enter().append("line")
+            .attr("marker-start", "url(#arrowhead)")
             .attr("marker-end", "url(#arrowhead)")
             .attr("stroke-opacity", l => linkTransparencyScale(l.movement_amount)) 
             .on("mouseover", function(l) { d3.select(this).style("cursor", "pointer") })
@@ -75,6 +82,10 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                 setSelectedElement({"type": "link", "id": l.tx_id})
                 setSelectedElementData({"data": null, "delegationData": null})
             })
+
+        console.timeEnd('add links')
+
+        console.time('add arrowheads')
 
         var defs = svg.append("defs")
 
@@ -91,6 +102,10 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .attr("d", "M 0 0 L 10 5 L 0 10 z") // A simple triangle shape
             .attr("fill", "#BBBBBB") // Set the color of the arrowhead
 
+        console.timeEnd('add arrowheads')
+
+        console.time('add bubbles')
+
         const bubblesLayer = g.append("g")
 
         // Add nodes as bubbles
@@ -106,19 +121,21 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .on("mouseover", function(p) { d3.select(this).style("cursor", "pointer")})
 
         bubblesRef.current = nodeGroups
-
-        nodeGroups.append("text")
-            .text(p => p.pool_id)
-            .attr("text-anchor", "middle")
-            .attr("dy", "0.3em")
-            .attr("fill", "white")
-            .style("font-size", "100px")
-            .style("pointer-events", "none")
             
         nodeGroups.append("circle")
             .attr("fill", p => !p.is_active && p.delegator_count === 0 ? "gray" : saturationScale(p.saturation_ratio))
                 // d3.interpolateRdYlGn(saturationScale(p.saturation_percent))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", p => p.radius)
+
+        nodeGroups.append("text")
+            .text(p => p.ticker)
+            .attr("text-anchor", "middle")
+            .attr("dy", "0.3em")
+            .attr("fill", "white")
+            .style("font-size", "20px")
+            .style("pointer-events", "none")
+
+        console.timeEnd('add bubbles')
             
         // const textLayer = g.append("text")
 
@@ -175,14 +192,14 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             //     //d3.select(this).classed('selected', true)
             // })
 
-        const retiredPoolLabels = svg.selectAll("text")
-            .data(nodes.filter(d => d.is_active === 'false'))
-            .join("text")
-            .text("RETIRED")
-            .attr("font-size", "100px")
-            .attr("text-anchor", "middle")
-            .attr("dy", ".35em")
-            .attr("pointer-events", "none")
+        // const retiredPoolLabels = svg.selectAll("text")
+        //     .data(nodes.filter(d => d.is_active === 'false'))
+        //     .join("text")
+        //     .text("RETIRED")
+        //     .attr("font-size", "100px")
+        //     .attr("text-anchor", "middle")
+        //     .attr("dy", ".35em")
+        //     .attr("pointer-events", "none")
 
         const simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(collapsedLinks).id(p => p.tx_id).distance(d => {
@@ -196,39 +213,56 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
             .force("y", d3.forceY().strength(0.5).y(p => p.pool_id === selectedElement?.id ? dimensions.height / 2 : p.y))
             .alphaDecay(0.1) // increase to reduce simulation time (keep between 0 and 1)
 
-        // bubblesRef.current.append("title").text(p => p.ticker)
-        // bubblesRef.current.append("text").text(p => p.ticker)
+        let lastTick = 0
+        let ticking = false
 
+        console.time('simulation')
         simulation.on("tick", () => {
 
-            // bubblesRef.current
-            //     .forEach(p => {
-            //         if (p.pool_id === selectedElement?.id) {
-            //             console.log(p.pool_id, selectedElement.id)
-            //             p.x = dimensions.width / 2
-            //             p.y = dimensions.height / 2
-            //         }
-            //     })
+            // // reduce update frequency to improve performance
+            const now = performance.now()
+            if (now - lastTick < 30) return // update ~33ms = 30fps
+            lastTick = now
 
-            bubblesRef.current
-                .attr("transform", d => `translate(${d.x}, ${d.y})`)
-                
-            // Shorten links to not overlap with bubbles
-            linksRef.current
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => {
-                    const dx = d.target.x - d.source.x
-                    const dy = d.target.y - d.source.y
-                    const dist = Math.hypot(dx, dy) || 1
-                    return d.target.x - (dx / dist) * d.target.radius
-                    })
-                .attr("y2", d => {
-                    const dx = d.target.x - d.source.x
-                    const dy = d.target.y - d.source.y
-                    const dist = Math.hypot(dx, dy) || 1
-                    return d.target.y - (dy / dist) * d.target.radius
+            const linksData = linksRef.current.data()
+            linksData.forEach((d) => {
+                const dx = d.target.x - d.source.x
+                const dy = d.target.y - d.source.y
+                const dist = Math.hypot(dx, dy) || 1
+                d.x1 = d.source.x + (dx / dist) * d.source.radius
+                d.y1 = d.source.y + (dy / dist) * d.source.radius
+                d.x2 = d.target.x - (dx / dist) * d.target.radius
+                d.y2 = d.target.y - (dy / dist) * d.target.radius
+            })
+
+            if (!ticking) {
+                ticking = true
+                requestAnimationFrame(() => {
+                    bubblesRef.current.attr("transform", d => `translate(${d.x}, ${d.y})`)
+
+                    // Shorten links to not overlap with bubbles
+                    linksRef.current
+                        .attr("x1", d => d.x1)
+                        .attr("y1", d => d.y1)
+                        .attr("x2", d => d.x2)
+                        .attr("y2", d => d.y2)
+                    ticking = false
                 })
+            }
+
+            
+                    // {
+                    // const dx = d.target.x - d.source.x
+                    // const dy = d.target.y - d.source.y
+                    // const dist = Math.hypot(dx, dy) || 1
+                    // return d.target.x - (dx / dist) * d.target.radius
+                    // })
+                // .attr("y2", d => {
+                //     const dx = d.target.x - d.source.x
+                //     const dy = d.target.y - d.source.y
+                //     const dist = Math.hypot(dx, dy) || 1
+                //     return d.target.y - (dy / dist) * d.target.radius
+                // })
 
             // retiredPoolLabels
             //     .attr("x", d => d.x)
@@ -236,7 +270,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
         })
 
         simulation.on("end", () => {
-            console.log("Simulation ended")
+            console.timeEnd('simulation')
         })
 
         return () => simulation.stop()
@@ -244,7 +278,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
 
     // Handling selected element styling
     useEffect(() => {
-       
+       console.time('update selection styles')
         if (bubblesRef.current) {
             bubblesRef.current
                 .attr("stroke", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? d3.color("#00ffcc") : !p.is_active ? "gray" : saturationScale(p.saturation_ratio))
@@ -276,6 +310,7 @@ export default function BubbleGraph ({ nodes, links, scales, dimensions, selecte
                     return "block"
                 })
         }
+        console.timeEnd('update selection styles')
 
     }, [selectedElementData, nodes, links]) // nodes and links needed for intial render. selectedElementData instead of selectedElement so that it runs only when data is set
 

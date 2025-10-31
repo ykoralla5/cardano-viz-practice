@@ -29,7 +29,7 @@ export default function BubbleMap() {
         selectedRankMax: null,
         selectedSlotMin: null,
         selectedSlotMax: null,
-        epoch: 299,
+        epoch: 560,
         retiredPoolsToggle: true,
         delegationChangedToggle: true
     })
@@ -85,6 +85,8 @@ export default function BubbleMap() {
         }
     }, [filters.epoch])
 
+    console.time('Total front-end load')
+
     const fetchEpochsList = useCallback(async () => {
         const response = await fetchEpochs()
         setEpochsList(response[0]['epochs_list'])
@@ -92,66 +94,71 @@ export default function BubbleMap() {
         setSlotRange(response[0]['min_max_slot'])
     },[])
 
-    // const fetchCurrentEpochData = useCallback(async () => {
-    //     if (!filters.epoch) return
-
-    //     const response = await fetchCurrentEpoch(filters.epoch)
-    //     setCurrentEpochData(response)
-    // }, [filters.epoch])
-
     // Fetch data on the change in epoch input
     useEffect(() => {
         fetchEpochsList()
-        console.log('Fetched epochs list')
+        // console.log('Fetched epochs list')
     }, [fetchEpochsList])
 
     // Fetch data on the change in epoch input
     useEffect(() => {
         if (!filters.epoch) return
+        
+        // console.time('fetch data')
         fetchDelegationData()
-        // fetchCurrentEpochData()
-        console.log('Fetched delegation and current epoch data')
+        // console.timeEnd('fetch data')
+
     }, [fetchDelegationData])
 
     // Compute scales
     const radiusScale = useMemo(() => {
         if (!poolData.length) return () => 5 // fallback
 
-        console.log('Computed radius scale')
-        return d3.scaleSqrt()
+        // console.time('compute radius scale')
+
+        const scale = d3.scaleSqrt()
             .domain([1, d3.max(poolData, d => d.total_stake)])
             .range([5, 100])
+
+        // console.timeEnd('compute radius scale')
+        return scale
     }, [poolData])
 
     const linkTransparencyScale = useMemo(() => {
         if (!movementData.length) return () => 1
 
-        console.log('Computed link transparency scale')
-        return d3.scaleSqrt()
+        // console.time('compute link transparency scale')
+        const scale = d3.scaleSqrt()
             .domain([d3.min(movementData, d => d.amount), d3.max(movementData, d => d.amount)])
             .range([0.5, 1])
+        // console.timeEnd('compute link transparency scale')
+
+        return scale
     }, [movementData])
 
     const linkWidthScale = useMemo(() => {
         if (!movementData.length) return () => 1
 
-        console.log('Computed link width scale')
-        return d3.scaleSqrt()
+        // console.time('compute link width scale')
+        const scale = d3.scaleSqrt()
             .domain([d3.min(movementData, d => d.amount), d3.max(movementData, d => d.amount)])
             .range([1, 5])
+        // console.timeEnd('compute link width scale')
+
+        return scale
     }, [movementData])
 
     const saturationScale = useMemo(() => {
         if (!poolData.length) return () => "#ccc"
 
-        // const minSat = d3.min(rankedNodes, d => d.saturation_ratio)
+        // console.time('compute saturation scale')
         const maxSat = d3.max(poolData, d => d.saturation_ratio)
 
         const redScale = d3.scaleLinear()
             .domain([1, maxSat])
             .range(["#dd2b25", "#67000d"])
 
-        console.log('Computed saturation scale')
+        // console.timeEnd('compute saturation scale')
 
         return (saturation) => {
             if (saturation < 1) return "#0c824dff"
@@ -167,17 +174,20 @@ export default function BubbleMap() {
             return []
         }
 
-        console.log('Computed ranked nodes')
+        // console.time('compute ranked nodes')
 
-        return poolData
+        const nodes = poolData
             .slice()
             .sort((a, b) => a.total_stake - b.total_stake) // highest stake first
             .map((pool, i) => ({
                 ...pool,
                 rank: i + 1,
-                radius: radiusScale(pool.total_stake),
-                // saturation_percent: (pool.total_stake / (currentEpochData.saturation_point)) * 100
+                radius: radiusScale(pool.total_stake)
             }))
+
+        // console.timeEnd('compute ranked nodes')
+
+        return nodes
     }, [poolData, currentEpochData])
 
     // // Initialize rank filter only once rankedData is ready
@@ -193,6 +203,13 @@ export default function BubbleMap() {
     //     }
     // }, [rankedNodes])
 
+    const poolIdsWithMovement = useMemo(() => {
+        // console.time('compute pool ids with movement')
+        const poolIdsFlat = new Set(movementData.flatMap(d => [d.source_pool_id, d.destination_pool_id]))
+        // console.timeEnd('compute pool ids with movement')
+        return poolIdsFlat
+    }, [movementData])
+
     // Apply filters
     const eligibleList = useMemo(() => {
         if (!rankedNodes.length) {
@@ -200,21 +217,18 @@ export default function BubbleMap() {
             return []
         }
 
-        console.log('Computed eligible list')
-        return rankedNodes.filter(pool => {
+        const nodes = rankedNodes.filter(pool => {
             // Retired toggle
             if (!filters.retiredPoolsToggle && !pool.is_active) return false
 
             // Delegation changed toggle: check if pool appears in movementData
-            if (filters.delegationChangedToggle) {
-                const poolIdsWithMovement = new Set(
-                    movementData.flatMap(d => [d.source_pool_id, d.destination_pool_id])
-                )
-                if (!poolIdsWithMovement.has(pool.pool_id)) return false
-            }
+            if (filters.delegationChangedToggle && poolIdsWithMovement && !poolIdsWithMovement.has(pool.pool_id)) return false
 
             return true
         })
+        // console.timeEnd('compute eligible list')
+
+        return nodes
     }, [rankedNodes, filters.retiredPoolsToggle, filters.delegationChangedToggle, movementData])
 
     // Initialize selectedRankMin when eligibleList is ready
@@ -233,12 +247,16 @@ export default function BubbleMap() {
     // Filter nodes on filters chosen by user
     const filteredNodes = useMemo(() => {
         if (!eligibleList.length || filters.selectedRankMin === null || filters.selectedRankMax === null) {
-            console.log('No eligible nodes or rank filter not set')
+            // console.log('No eligible nodes or rank filter not set')
             return [] }
 
+        console.time('compute filtered nodes')
         const min = filters.selectedRankMin ?? 0
         const max = filters.selectedRankMax ?? eligibleList.length - 1
-        return eligibleList.slice(min, max + 1)
+        const nodes = eligibleList.slice(min, max + 1)
+        // console.timeEnd('compute filtered nodes')
+
+        return nodes
 
         // // If delegationChangedToggle is on, show only pools whose delegation changed
         // if (filters.delegationChangedToggle) {
@@ -265,14 +283,20 @@ export default function BubbleMap() {
             console.log('No movement data for filtering links')
             return [0, 0]
         }
-        return movementData
+        // console.time('compute filtered links')
+        const links = movementData
             .filter(link => link.slot_no >= filters.selectedSlotMin && link.slot_no <= filters.selectedSlotMax)
+        // console.timeEnd('compute filtered links')
+
+        return links
     }, [movementData, filteredNodes, filters.selectedSlotMin, filters.selectedSlotMax])
 
     // Final nodes and links to be used in the visualization
     // This allows filtering by both nodes and links
     const { finalNodes, finalLinks } = useMemo(() => {
         if (!filteredNodes.length || !filteredLinks.length) return { finalNodes: [], finalLinks: [] }
+
+        console.time('compute final links')
         const nodeIds = new Set(filteredNodes.map(p => p.pool_id))
         const links = filteredLinks
             .filter(link => nodeIds.has(link.source_pool_id) && nodeIds.has(link.destination_pool_id))
@@ -291,6 +315,9 @@ export default function BubbleMap() {
             })
         )
 
+        console.timeEnd('compute final links')
+        console.time('compute final nodes')
+
         let nodes = filteredNodes
             .filter(n => links.some(l => l.source === n.pool_id || l.target === n.pool_id))
 
@@ -299,6 +326,7 @@ export default function BubbleMap() {
             const selectedNode = rankedNodes.find(pool => pool.pool_id === selectedElement?.id)
             nodes = [...nodes, selectedNode]
         }
+        console.timeEnd('compute final nodes')
 
         // If delegationChangedToggle is off, return all filtered nodes; if on, return only nodes that have links
         return { finalNodes: nodes, finalLinks: links }
@@ -316,8 +344,12 @@ export default function BubbleMap() {
     // Derive min and max slot from epoch data
     const minMaxSlot = useMemo(() => {
         if (!movementData.length) return [0, 0]
+
+        // console.time('compute min max slot')
         const minSlot = d3.min(movementData, d => d.slot_no)
         const maxSlot = d3.max(movementData, d => d.slot_no)
+        // console.timeEnd('compute min max slot')
+
         return [minSlot, maxSlot]
     }, [movementData])
 
@@ -418,6 +450,11 @@ export default function BubbleMap() {
     })
 
     const sortedSlots = finalLinks.map(n => n.slot_no).sort((a, b) => a - b)
+
+    useEffect(() => {
+        if (!finalNodes.length || !finalLinks.length) return
+        console.timeEnd('Total front-end load')
+    }, [finalNodes, finalLinks])
 
     // Count nodes and links in final data
     const nodesCount = useMemo(() => finalNodes.length, [finalNodes])
