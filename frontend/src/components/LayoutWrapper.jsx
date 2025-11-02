@@ -2,7 +2,7 @@ import { Children, useCallback, useEffect, useRef, useState, useMemo } from "rea
 import BubbleGraph from "./BubbleGraph"
 
 /* Direct container of the bubble map */
-export default function LayoutWrapper({ nodes, links, scales, selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) 
+export default function LayoutWrapper({ nodes, links, collapsedLinks, scales, selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) 
 {
     const containerRef = useRef(null)
     const [dimensions, setDimensions] = useState({width: innerWidth, height: innerHeight})
@@ -42,6 +42,7 @@ export default function LayoutWrapper({ nodes, links, scales, selectedElement, s
             <BubbleGraph 
                 nodes={nodes}
                 links={links}
+                collapsedLinks={collapsedLinks}
                 scales={scales}
                 dimensions={{'width': dimensions.width, 'height': dimensions.height}}
                 selectedElement={selectedElement}

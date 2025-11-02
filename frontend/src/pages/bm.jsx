@@ -35,6 +35,7 @@ export default function BubbleMap() {
     })
 
     const RANK_WINDOW = 200
+    const SLOT_WINDOW = 1000
 
     // Modal states
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -75,7 +76,7 @@ export default function BubbleMap() {
                 selectedRankMax: initialMaxRank,
                 selectedSlotMin: initialMinSlot,
                 selectedSlotMax: initialMaxSlot
-            }) )
+            }))
         }
         catch (err) {
             setError(err)
@@ -92,7 +93,7 @@ export default function BubbleMap() {
         setEpochsList(response[0]['epochs_list'])
         setEpochRange(response[0]['min_max_epoch'])
         setSlotRange(response[0]['min_max_slot'])
-    },[])
+    }, [])
 
     // Fetch data on the change in epoch input
     useEffect(() => {
@@ -103,7 +104,7 @@ export default function BubbleMap() {
     // Fetch data on the change in epoch input
     useEffect(() => {
         if (!filters.epoch) return
-        
+
         // console.time('fetch data')
         fetchDelegationData()
         // console.timeEnd('fetch data')
@@ -248,7 +249,8 @@ export default function BubbleMap() {
     const filteredNodes = useMemo(() => {
         if (!eligibleList.length || filters.selectedRankMin === null || filters.selectedRankMax === null) {
             // console.log('No eligible nodes or rank filter not set')
-            return [] }
+            return []
+        }
 
         console.time('compute filtered nodes')
         const min = filters.selectedRankMin ?? 0
@@ -313,7 +315,7 @@ export default function BubbleMap() {
                 source_stake_change_percent: link.source_stake_change_percent,
                 dest_stake_change_percent: link.dest_stake_change_percent
             })
-        )
+            )
 
         console.timeEnd('compute final links')
         console.time('compute final nodes')
@@ -332,14 +334,38 @@ export default function BubbleMap() {
         return { finalNodes: nodes, finalLinks: links }
     }, [filteredNodes, filteredLinks])
 
+    // Merge delegations between same pools and sum their movement_amount for allowed movement types
+    const nodeById = useMemo(() => {
+        if (!finalNodes) return new Map()
+        return new Map(finalNodes.filter(p => p && p.pool_id).map(p => [p.pool_id, p]))
+    }, [finalNodes])
+    const ALLOWED_MOVEMENT_TYPES = ["NON_FINALIZED_REDELEGATION", "NON_FINALIZED_REDELEGATION_PENDING", "FINALIZED_REDELEGATION"]
     
+    const redelegationLinks = useMemo(() => {
+        if (!finalLinks.length) return []
+        return finalLinks.filter(l => ALLOWED_MOVEMENT_TYPES.includes(l.movement_type))
+    }, [finalLinks])
 
+    console.time('collapse links')
 
-    // Derive min and max stake held by a pool in current epoch
-    // const minMaxRank = useMemo(() => {
-    //     if (!eligibleList.length) return [0, 0]
-    //     return [0, eligibleList.length - 1]
-    // }, [eligibleList])
+    const collapsedLinks = Array.from(
+        d3.group(redelegationLinks, l => {
+            const key = [l.source, l.target].sort().join('-')
+            return key
+        }),
+        ([key, group]) => {
+            const hasAtoB = group.some(l => l.source === group[0].source)
+            const hasBtoA = group.some(l => l.source === group[0].target)
+            const isBidirectional = hasAtoB && hasBtoA
+            return {
+            source: nodeById.get(group[0].source),
+            target: nodeById.get(group[0].target),
+            count: group.length,
+            movement_amount: d3.sum(group, g => g.movement_amount || 0),
+            bidirectional: isBidirectional,
+            originalLinks: group
+        }}
+    )
 
     // Derive min and max slot from epoch data
     const minMaxSlot = useMemo(() => {
@@ -403,14 +429,25 @@ export default function BubbleMap() {
                             delegationData = finalLinks.filter(l => l.source === id || l.target === id)
                                 .map(l => ({
                                     ...l,
-                                    sourceData: finalNodes.find(n => n.pool_id === l.source),
-                                    targetData: finalNodes.find(n => n.pool_id === l.target)
+                                    source: finalNodes.find(n => n.pool_id === l.source),
+                                    target: finalNodes.find(n => n.pool_id === l.target)
                                 }))
                         }
-                        // else if (type === 'link') {
-                        //     data = finalLinks.find(l => l.tx_id === id)
-                        //     delegationData = null
-                        // }
+                        else if (type === 'link') {
+                            const linkMap = new Map(collapsedLinks.map(l => [`${l.source.pool_id}-${l.target.pool_id}`, l]))
+                            const key = `${id.source}-${id.target}`
+                            const currentLink = linkMap.get(key)
+                            if (currentLink) {
+                                const { source, target, originalLinks } = currentLink
+                                data = [source, target]
+                                delegationData = originalLinks.map(l => ({
+                                    ...l,
+                                    source: finalNodes.find(n => n.pool_id === l.source),
+                                    target: finalNodes.find(n => n.pool_id === l.target)
+                                })
+                                )
+                            }
+                        }
                         setSelectedElementData({ "data": data || null, "delegationData": delegationData || null })
                     }
                 } else {
@@ -424,6 +461,9 @@ export default function BubbleMap() {
         fetchElementData()
 
     }, [selectedElement, finalNodes, finalLinks])
+
+    console.log('Selected element:', selectedElement)
+    console.log('Selected element data:', selectedElementData)
 
     const handleSearch = useCallback((e) => {
         e.preventDefault()
@@ -509,19 +549,21 @@ export default function BubbleMap() {
                         rankWindow={RANK_WINDOW}
                     />
                     <section id="d3-chart-container" className="w-full flex flex-col items-center relative m-0">
-                        {finalNodes.length !== 0 && finalLinks.length !== 0 && 
-                        <LayoutWrapper
-                            nodes={finalNodes} links={finalLinks}
-                            scales={{ 'radiusScale': radiusScale, 'saturationScale': saturationScale, 'linkTransparencyScale': linkTransparencyScale, 'linkWidthScale': linkWidthScale }}
-                            selectedElement={selectedElement}
-                            setSelectedElement={setSelectedElement}
-                            selectedElementData={selectedElementData}
-                            setSelectedElementData={setSelectedElementData} />}
-                        
+                        {finalNodes.length !== 0 && finalLinks.length !== 0 &&
+                            <LayoutWrapper
+                                nodes={finalNodes} links={finalLinks} collapsedLinks={collapsedLinks}
+                                scales={{ 'radiusScale': radiusScale, 'saturationScale': saturationScale, 'linkTransparencyScale': linkTransparencyScale, 'linkWidthScale': linkWidthScale }}
+                                selectedElement={selectedElement}
+                                setSelectedElement={setSelectedElement}
+                                selectedElementData={selectedElementData}
+                                setSelectedElementData={setSelectedElementData} />}
+
                     </section>
                     <InfoPanel
                         selectedElement={selectedElement} setSelectedElement={setSelectedElement}
-                        selectedElementData={selectedElementData} setSelectedElementData={setSelectedElementData} />
+                        selectedElementData={selectedElementData} setSelectedElementData={setSelectedElementData} 
+                        saturationScale={saturationScale}
+                    />
                     <EpochData
                         isOpen={isEpochDataOpen}
                         onClose={toggleEpochData}

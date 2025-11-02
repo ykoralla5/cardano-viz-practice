@@ -2,7 +2,7 @@ import * as utils from '../utils/dataTransformers'
 import ViewToolTip from '../components/ViewToolTip'
 import { useMemo, useState } from 'react'
 
-export default function DelegationList({ isOpen, onClose, delegationData, poolData }) {
+export default function DelegationList({ isOpen, onClose, delegationData, poolData, type }) {
 
     if (!delegationData) {
         return (
@@ -93,7 +93,11 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
         <div className="fixed inset-0 flex items-center justify-center z-20" onClick={onClose}>
             <div className="bg-gray-100 dark:bg-gray-700 p-6 rounded-lg flex flex-col space-y-4 justify-center z-1000 text-gray-600 dark:text-white w-[60vw] max-h-[60vh]" onClick={e => e.stopPropagation()}>
                 <div className="p-1 flex-shrink-0 flex justify-between items-center">
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">Delegations for pool {poolData.name} [{poolData.ticker}]</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                        {type === "pool" ? 
+                            `Delegations for pool ${poolData.name} [${poolData.ticker}]` : 
+                            `Delegations between pools ${poolData.map(p => `${p.name} [${p.ticker}]`).join(" and ")}`}
+                        {/* Delegations for pool {poolData.name} [{poolData.ticker}]</p> */}</p>
                     <button type="button" className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                 </div>
                 {/* Filters */}
@@ -108,28 +112,23 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
                     ))}
                 </div> */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-  {delegationTypes.map((type) => (
-    <label
-      key={type}
-      className="flex flex-col sm:flex-row items-start sm:items-center cursor-pointer w-full"
-    >
-      <input
-        type="checkbox"
-        value={type}
-        className="sr-only peer"
-        checked={selectedDelTypes.includes(type)}
-        onChange={handleFilterChange(type)}
-      />
-      <div className="relative w-11 h-6 mt-1 sm:mt-0 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 dark:peer-focus:ring-teal-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600 dark:peer-checked:bg-teal-600"
-      ></div>
-      <span className="mt-2 sm:mt-0 sm:ms-3 text-sm font-medium text-gray-900 dark:text-gray-300 break-all">
-        Show {type}
-      </span>
-    </label>
-  ))}
-</div>
-
-
+                    {delegationTypes.map((type) => (
+                        <label
+                            key={type}
+                            className="flex flex-col sm:flex-row items-start sm:items-center cursor-pointer w-full">
+                            <input
+                                type="checkbox"
+                                value={type}
+                                className="sr-only peer"
+                                checked={selectedDelTypes.includes(type)}
+                                onChange={handleFilterChange(type)} />
+                            <div className="relative w-11 h-6 mt-1 sm:mt-0 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 dark:peer-focus:ring-teal-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-teal-600 dark:peer-checked:bg-teal-600"></div>
+                            <span className="mt-2 sm:mt-0 sm:ms-3 text-sm font-medium text-gray-900 dark:text-gray-300 break-all">
+                                Show {type}
+                            </span>
+                        </label>
+                    ))}
+                </div>
                 {/* Table */}
                 <div className="flex-grow overflow-x-hidden overflow-y-auto">
                     {filteredData.length === 0 ? (
@@ -151,14 +150,14 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
                                     <tr key={index} className={index % 2 === 0 ? "bg-gray-50 dark:bg-gray-800" : "bg-white dark:bg-gray-700"}>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{utils.translateSlot(d.slot_no)}</td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
-                                            <p className="font-semibold">{d.sourceData.name} [{d.sourceData.ticker}]</p>
-                                            <ViewToolTip id={d.sourceData.pool_view} />
-                                            {d.movement_type === 'FINALIZED_REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span></p>}
+                                            <p className="font-semibold">{d.source.name} [{d.source.ticker}]</p>
+                                            <ViewToolTip id={d.source.pool_view} />
+                                            {d.movement_type === 'FINALIZED_REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {Math.round(d.source_stake_change_percent * 100) / 100} %</span></p>}
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
-                                            <p className="font-semibold">{d.targetData.name} [{d.targetData.ticker}]</p>
-                                            <ViewToolTip id={d.targetData.pool_view} />
-                                            {d.movement_type === 'FINALIZED_REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-green-500 font-bold">+ {d.dest_stake_change_percent} %</span></p>}
+                                            <p className="font-semibold">{d.target.name} [{d.target.ticker}]</p>
+                                            <ViewToolTip id={d.target.pool_view} />
+                                            {d.movement_type === 'FINALIZED_REDELEGATION' && <p className="text-nowrap text-sm dark:text-gray-300">Stake change:<span className="px-2 py-1 text-green-500 font-bold">+ {Math.round(d.dest_stake_change_percent * 100) / 100} %</span></p>}
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
                                             <ViewToolTip id={d.addr_view} />
