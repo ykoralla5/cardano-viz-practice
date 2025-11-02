@@ -97,17 +97,17 @@ def get_delegation_summary(epoch_number):
         pct_change_source, pct_change_dest = 0, 0
 
         # Percentage change calculations
-        if d['movement_type'] in ('REDELEGATION', 'UNDELEGATED'):
+        if d['movement_type'] in ('NON_FINALIZED_REDELEGATION', 'FINALIZED_REDELEGATION', 'UNDELEGATED'):
             if source_stake and source_stake > 0:
                 if delegation_amount > source_stake:
                     
-                    print(delegation_amount, source_stake, d['movement_type'], d['source_pool_id'])
+                    # print(delegation_amount, source_stake, d['movement_type'], d['source_pool_id'])
                     count = count + 1
                 pct_change_source = ((delegation_amount / source_stake) * 100).quantize(Decimal('0.01'))
-        if d['movement_type'] in ('REDELEGATION', 'NEW_STAKE'):
+        if d['movement_type'] in ('NON_FINALIZED_REDELEGATION', 'NON_FINALIZED_REDELEGATION_PENDING', 'FINALIZED_REDELEGATION', 'NEW_STAKE', 'NEW_STAKE_PENDING'):
             if dest_stake and dest_stake > 0:
                 pct_change_dest = ((delegation_amount / dest_stake) * 100).quantize(Decimal('0.01'))
-        if d['movement_type'] == 'AWAITING_ACTIVATION':
+        if d['movement_type'] == 'NO_CHANGE':
             pct_change_source = None
             pct_change_dest = None
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function ViewToolTip({ id, key }) {
+export default function AddrToolTip({ id, key }) {
   const [copied, setCopied] = useState(false)
   const [hover, setHover] = useState(false)
 

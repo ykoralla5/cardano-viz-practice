@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as utils from '../utils/dataTransformers'
 import DelegationList from './DelegationList'
+import InfoToolTip from './InfoToolTip'
 import * as d3 from 'd3'
 
 export default function InfoPanel({ selectedElement, setSelectedElement, selectedElementData, setSelectedElementData, saturationScale }) {
@@ -58,9 +59,9 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                                     <p>Active Stake <span className="text-gray-900 dark:text-white">₳ {!data.is_active && data.delegator_count === 0 ? utils.formatAda(data.total_stake) + ' !Stake from previous epoch!' : utils.formatAda(data.total_stake)} (#{data.rank})</span></p>
                                     <p># Delegators <span className="text-gray-900 dark:text-white">{data.delegator_count}</span></p>
                                     <p>Operator pledge <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.pledge)}</span></p>
-                                    <p>Saturation ratio <span className={data.saturation_ratio < 1 ? "text-green-500 dark:text-green-500 font-bold" : data.saturation_ratio > 1.5 ? "text-red-500 dark:text-red-500 font-bold" : "text-orange-500 dark:text-orange-500 font-bold"}>{Math.round(data.saturation_ratio * 100) / 100}</span></p>
+                                    <p className="flex">Saturation ratio <span className={data.saturation_ratio < 1 ? "text-green-500 dark:text-green-500 font-bold" : data.saturation_ratio > 1.5 ? "text-red-500 dark:text-red-500 font-bold" : "text-orange-500 dark:text-orange-500 font-bold"}>{Math.round(data.saturation_ratio * 100) / 100}</span><InfoToolTip text="Pools with saturation ratio above 1 are a sign of centralisation and are coloured either green (<1), orange (>1<1.5) or red(>1.5)"/></p>
                                     <p>Actual / Expected # of blocks minted <span className="text-gray-900 dark:text-white">{data.actual_blocks} / {Math.round(data.expected_blocks * 100) / 100}</span></p>
-                                    <p>Performance <span className={data.performance_ratio < 1 ? "text-red-500" : "text-green-500"}>{Math.round(data.performance_ratio * 100) / 100}</span></p>
+                                    <p className="flex">Performance <span className={data.performance_ratio < 1 ? "text-red-500" : "text-green-500"}>{Math.round(data.performance_ratio * 100) / 100}</span><InfoToolTip text="Ratio of actual and expected blocks minted in this epoch"/></p>
                                     <p className='flex'>Pool active?  {data?.is_active ? (
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6 stroke-green-500"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
                                     ) : (
@@ -72,7 +73,7 @@ export default function InfoPanel({ selectedElement, setSelectedElement, selecte
                             {type === "link" && (
                                 <>
                                     {/* <p className="text-lg font-bold text-gray-900 dark:text-white">Selected delegation</p> */}
-                                    <p>Between Pool <span className="text-gray-900 dark:text-white">({source.name}) {source.ticker}</span> and <span className="text-gray-900 dark:text-white">({target.name}) {target.ticker}</span></p>
+                                    <p className="flex flex-col mb-5">Between Pool <span className="text-gray-900 dark:text-white">({source.name}) [{source.ticker}]</span> and <span className="text-gray-900 dark:text-white">({target.name}) [{target.ticker}]</span></p>
                                     {/* <p>To Pool <span className="text-gray-900 dark:text-white">({target?.name}) {data.target?.pool_view}</span></p> */}
                                     {/* <p>Delegated Amount <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(data.totalMovement)}</span></p> */}
                                     <p># of delegations <span className="text-gray-900 dark:text-white">{delegationData.length}</span></p>
