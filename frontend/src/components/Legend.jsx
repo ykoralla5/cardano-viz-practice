@@ -1,5 +1,3 @@
-import * as utils from '../utils/dataTransformers'
-
 export default function Legend({ isOpen, onClose, radiusScale }) {
 
     const gradientId = "saturation-gradient"
@@ -7,17 +5,17 @@ export default function Legend({ isOpen, onClose, radiusScale }) {
     let xOffset = 0
     const circles = legendValues.map((v, i) => {
         const r = radiusScale(v)
-        console.log('legend radius for', v, 'is', r)
-        // xOffset += 2 * r + 30
+        // console.log('legend radius for', v, 'is', r)
+        xOffset += 1.5 * r + 20
         const g = (
             <g key={v} transform={`translate(${xOffset}, 80)`}>
                 <circle r={r} className="dark:stroke-white stroke-gray-800 fill-none" />
-                <text x={0} y={r + 15} fontSize={12} fill="white" className="dark:text-gray-300 text-gray-700">
-                    {v >= 1_000_000_000_000 ? `${(v / (1_000_000 * 1_000_000)).toLocaleString()}M ADA` : v >= 10_000_000_000 ? `${(v / (1_000 * 1_000_000)).toLocaleString()}K ADA` : `${(v / 1_000_000).toLocaleString()} ADA`}
+                <text x={-10} y={r + 20} fontSize={12} fill="white" className="dark:text-gray-300 text-gray-700">
+                    {v >= 1_000_000_000_000 ? `₳ ${(v / (1_000_000 * 1_000_000)).toLocaleString()}M` : v >= 10_000_000_000 ? `₳ ${(v / (1_000 * 1_000_000)).toLocaleString()}K` : `₳ ${(v / 1_000_000).toLocaleString()}`}
                 </text>
             </g>
         )
-        xOffset += 2 * r + 50
+        // xOffset += 2*r + 50
         return g 
     })
 
@@ -72,22 +70,7 @@ export default function Legend({ isOpen, onClose, radiusScale }) {
                                 <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1 z-10">Stake as size of nodes</div>
                                 <div className="flex flex-row justify-center">
                                     <svg height={250}>
-                                        {circles
-                                        // legendValues.map((v, i) => {
-                                        //     const r = radiusScale(v)
-                                        //     console.log('legend radius for', v, 'is', r)
-                                        //     // xOffset += 2 * r + 30
-                                        //     return (
-                                        //         <g key={v} transform={`translate(${xOffset}, 80)`}>
-                                        //             <circle r={r} className="dark:stroke-white stroke-gray-800 fill-none" />
-                                        //             <text x={0} y={r + 20} fontSize={12} fill="white" className="dark:text-gray-300 text-gray-700">
-                                        //                 {v >= 1_000_000_000_000 ? `${(v / (1_000_000 * 1_000_000)).toLocaleString()}M ADA` : v >= 10_000_000_000 ? `${(v / (1_000 * 1_000_000)).toLocaleString()}K ADA` : `${(v / 1_000_000).toLocaleString()} ADA`}
-                                        //             </text>
-                                        //         </g>
-                                        //     )
-                                        //     xOffset += 2 * r + 30
-                                        // })
-                                        }
+                                        {circles}
                                     </svg>
                                 </div>
                             </div>
