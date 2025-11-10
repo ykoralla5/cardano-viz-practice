@@ -1,5 +1,18 @@
 from django.db import models
 
+class AdaPot(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    slot_no = models.BigIntegerField(blank=True, null=True)
+    epoch_no = models.IntegerField(unique=True)
+    treasury = models.DecimalField(max_digits=20, decimal_places=0)
+    reserves = models.DecimalField(max_digits=20, decimal_places=0)
+    rewards = models.DecimalField(max_digits=20, decimal_places=0)
+
+    class Meta:
+        managed = False
+        db_table = 'ada_pots'
+        app_label = 'api'
+
 class Block(models.Model):
     id = models.BigAutoField(primary_key=True)
     hash = models.BinaryField(unique=True)
@@ -341,6 +354,7 @@ class EpochSummary(models.Model):
     pledge_influence = models.DecimalField(max_digits=5, decimal_places=4)
     optimal_pool_count = models.IntegerField()
     total_active_stake = models.DecimalField(max_digits=40, decimal_places=0)
+    circulating_supply = models.DecimalField(max_digits=40, decimal_places=0)
     stake_address_count = models.IntegerField()
     pool_count = models.IntegerField()
     phase = models.CharField(max_length=20)

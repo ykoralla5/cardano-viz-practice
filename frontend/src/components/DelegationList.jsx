@@ -43,11 +43,11 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
             return []
         }
         if (selectedDelTypes.length === delegationTypes.length) {
-            return delegationData.filter(item => item.movement_type !== "NO_CHANGE")
+            return delegationData.filter(l => l.movement_type !== "NO_CHANGE")
         }
 
         // Keep items whose movementType is in the selectedDelTypes array
-        return delegationData.filter(item => selectedDelTypes.includes(item.movement_type) && item.movement_type !== "NO_CHANGE"
+        return delegationData.filter(l => selectedDelTypes.includes(l.movement_type) && l.movement_type !== "NO_CHANGE"
         )
     }, [selectedDelTypes])
 
@@ -160,12 +160,21 @@ export default function DelegationList({ isOpen, onClose, delegationData, poolDa
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-2">
                                             <p className="font-semibold">{d.source.name} [{d.source.ticker}]</p>
                                             <AddrToolTip id={d.source.pool_view} />
-                                            {['NON_FINALIZED_REDELEGATION', 'FINALIZED_REDELEGATION', 'UNDELEGATED'].includes(d.movement_type) && <p className="text-sm dark:text-gray-300 flex items-center">Stake change:<span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span><InfoToolTip text="Percent change in pool stake due to this delegation"/></p>}
+                                            {['NON_FINALIZED_REDELEGATION', 'FINALIZED_REDELEGATION', 'UNDELEGATED'].includes(d.movement_type) && <div className="flex items-center">
+                                                    <p className="text-sm dark:text-gray-300">Stake change:
+                                                        <span className="px-2 py-1 text-red-500 font-bold">- {d.source_stake_change_percent} %</span></p>
+                                                    <InfoToolTip text="Percent change in pool stake due to this delegation"/></div>
+                                            }
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
                                             <p className="font-semibold">{d.target.name} [{d.target.ticker}]</p>
                                             <AddrToolTip id={d.target.pool_view} />
-                                            {['NON_FINALIZED_REDELEGATION', 'NON_FINALIZED_REDELEGATION_PENDING', 'FINALIZED_REDELEGATION', 'NEW_STAKE', 'NEW_STAKE_PENDING'].includes(d.movement_type) && <p className="text-sm dark:text-gray-300 flex items-center">Stake change:<span className="px-2 py-1 text-green-500 font-bold">+ {d.dest_stake_change_percent} %</span><InfoToolTip text="Percent change in pool stake due to this delegation"/></p>}
+                                            {['NON_FINALIZED_REDELEGATION', 'NON_FINALIZED_REDELEGATION_PENDING', 'FINALIZED_REDELEGATION', 'NEW_STAKE', 'NEW_STAKE_PENDING'].includes(d.movement_type) && 
+                                                <div className="flex items-center">
+                                                    <p className="text-sm dark:text-gray-300">Stake change:
+                                                        <span className="px-2 py-1 text-green-500 font-bold">+ {d.dest_stake_change_percent} %</span></p>
+                                                    <InfoToolTip text="Percent change in pool stake due to this delegation"/></div>
+                                                    }
                                         </td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">
                                             <AddrToolTip id={d.addr_view} />

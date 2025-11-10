@@ -1,9 +1,19 @@
 \set ON_ERROR_STOP on
+
 \timing on
 
--- ===========================================================
--- 1. INSERT NEW DELEGATION MOVEMENTS
--- ===========================================================
+-- Acquire advisory lock (only one instance runs at a time)
+DO $$
+BEGIN
+    IF NOT pg_try_advisory_lock(1001) THEN
+        RAISE NOTICE 'Another instance of delegation_summary is already running. Exiting.';
+        PERFORM pg_sleep(1);
+        RAISE NOTICE 'Skipping duplicate job run.';
+        RETURN;
+    END IF;
+END $$;
+
+-- Main upsert logic
 
 INSERT INTO delegation_summary (
     delegation_id,
@@ -102,9 +112,7 @@ ORDER BY dw.epoch_no, dw.slot_no
 ON CONFLICT (epoch_no, tx_id, addr_id, delegation_id)
 DO NOTHING;
 
--- ===========================================================
--- 2. UPDATE NEW_STAKE_PENDING WHEN FINALIZED DATA ARRIVES
--- ===========================================================
+-- Update entries where amount could not be determined before
 
 WITH new_amounts AS (
     SELECT
@@ -141,3 +149,6 @@ BEGIN
     WHERE movement_type = 'NEW_STAKE';
     RAISE NOTICE '✅ Delegation summary updated. % NEW_STAKE entries finalized.', updated_count;
 END $$;
+
+-- Release lock at the end
+SELECT pg_advisory_unlock(1001);

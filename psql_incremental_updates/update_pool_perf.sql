@@ -2,6 +2,19 @@
 
 \timing on
 
+-- Acquire advisory lock (only one instance runs at a time)
+DO $$
+BEGIN
+    IF NOT pg_try_advisory_lock(1003) THEN
+        RAISE NOTICE 'Another instance of pool_perf_summary is already running. Exiting.';
+        PERFORM pg_sleep(1);
+        RAISE NOTICE 'Skipping duplicate job run.';
+        RETURN;
+    END IF;
+END $$;
+
+-- Main upsert logic
+
 WITH last_epoch AS (
     SELECT COALESCE(MAX(epoch_no), -1) AS last_epoch_no
     FROM pool_perf_summary
@@ -54,3 +67,6 @@ INSERT INTO pool_perf_summary (epoch_no, pool_id, actual_blocks, expected_blocks
         created_at = NOW()
     WHERE pool_perf_summary.actual_blocks IS DISTINCT FROM EXCLUDED.actual_blocks
     OR pool_perf_summary.expected_blocks IS DISTINCT FROM EXCLUDED.expected_blocks;
+
+-- Release lock at the end
+SELECT pg_advisory_unlock(1003);

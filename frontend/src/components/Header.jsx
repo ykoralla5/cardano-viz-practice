@@ -13,7 +13,7 @@ export default function Header({  }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     
     return (
-        <header className="h-[8.5vh] bg-white dark:bg-gray-800 flex justify-center shadow-md px-6 lg:px-8">
+        <header className="h-[8.5vh] bg-gray-100 dark:bg-gray-800 flex justify-center shadow-md px-6 lg:px-8">
             <nav className="w-full mx-auto flex justify-between items-center" aria-label="Global">
                 <div className="flex lg:flex-1">
                     <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">

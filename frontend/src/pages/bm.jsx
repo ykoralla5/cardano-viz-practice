@@ -34,7 +34,7 @@ export default function BubbleMap() {
         delegationChangedToggle: true
     })
 
-    const RANK_WINDOW = 200
+    const RANK_WINDOW = 350
     const SLOT_WINDOW = 1000
 
     // Modal states
@@ -119,7 +119,7 @@ export default function BubbleMap() {
 
         const scale = d3.scaleSqrt()
             .domain([1, d3.max(poolData, d => d.total_stake)])
-            .range([5, 100])
+            .range([2.5, 100])
 
         // console.timeEnd('compute radius scale')
         return scale
@@ -153,7 +153,7 @@ export default function BubbleMap() {
         if (!poolData.length) return () => "#ccc"
 
         // console.time('compute saturation scale')
-        const maxSat = d3.max(poolData, d => d.saturation_ratio)
+        const maxSat = d3.max(poolData, p => p.saturation_ratio)
 
         const redScale = d3.scaleLinear()
             .domain([1, maxSat])
@@ -163,9 +163,14 @@ export default function BubbleMap() {
 
         return (saturation) => {
             if (saturation < 1) return "#0c824dff"
-            else if (saturation <= 1.5) return "orange"
+            else if (saturation <= 1.5) return "#ff6900"
             else if (saturation > 1.5) return redScale(saturation)
         }
+    }, [poolData])
+
+    const overSaturatedPoolCount = useMemo(() => {
+        if (!poolData.length) return 0
+        return poolData.filter(p => p.saturation_ratio > 1).length
     }, [poolData])
 
     // Rank nodes by stake and compute additional attributes
@@ -189,20 +194,7 @@ export default function BubbleMap() {
         // console.timeEnd('compute ranked nodes')
 
         return nodes
-    }, [poolData, currentEpochData])
-
-    // // Initialize rank filter only once rankedData is ready
-    // useEffect(() => {
-    //     if (rankedNodes.length && filters.selectedRankMin === null && filters.selectedRankMax === null) {
-    //         const max = rankedNodes.length - 1
-    //         const min = Math.max(0, max - RANK_WINDOW)
-    //         setFilters(prev => ({
-    //             ...prev,
-    //             selectedRankMin: min,
-    //             selectedRankMax: max
-    //         }))
-    //     }
-    // }, [rankedNodes])
+    }, [poolData])
 
     const poolIdsWithMovement = useMemo(() => {
         // console.time('compute pool ids with movement')
@@ -213,10 +205,7 @@ export default function BubbleMap() {
 
     // Apply filters
     const eligibleList = useMemo(() => {
-        if (!rankedNodes.length) {
-            console.log('No ranked nodes for eligible list')
-            return []
-        }
+        if (!rankedNodes.length) return []
 
         const nodes = rankedNodes.filter(pool => {
             // Retired toggle
@@ -230,20 +219,7 @@ export default function BubbleMap() {
         // console.timeEnd('compute eligible list')
 
         return nodes
-    }, [rankedNodes, filters.retiredPoolsToggle, filters.delegationChangedToggle, movementData])
-
-    // Initialize selectedRankMin when eligibleList is ready
-    // useEffect(() => {
-    //     if (!eligibleList.length) return
-    //     const maxIndex = eligibleList.length - 1
-    //     const minIndex = Math.max(0, maxIndex - RANK_WINDOW)
-    //     console.log('Initializing rank filter:', minIndex, maxIndex)
-    //     setFilters((prev) => ({
-    //         ...prev,
-    //         selectedRankMin: minIndex,
-    //         selectedRankMax: maxIndex
-    //     }))
-    // }, [eligibleList])
+    }, [rankedNodes, filters.retiredPoolsToggle, filters.delegationChangedToggle, poolIdsWithMovement])
 
     // Filter nodes on filters chosen by user
     const filteredNodes = useMemo(() => {
@@ -259,25 +235,7 @@ export default function BubbleMap() {
         // console.timeEnd('compute filtered nodes')
 
         return nodes
-
-        // // If delegationChangedToggle is on, show only pools whose delegation changed
-        // if (filters.delegationChangedToggle) {
-        //     const changedPools = new Set(movementData.flatMap(d => [d.source_pool_id, d.destination_pool_id]))
-        //     return rankedNodes
-        //         .filter(pool => changedPools.has(pool.pool_id))
-        //         // Filter out pools outside selected rank
-        //         .filter(pool => pool.rank >= filters.selectedRankMin && pool.rank <= filters.selectedRankMax)
-        //         // If retiredPoolsToggle is true, show all pools; if false, show only active pools
-        //         .filter(pool => filters.retiredPoolsToggle || pool.is_active)
-        //     // return filtered
-        // }
-
-        // return rankedNodes
-        //     // Filter out pools outside selected rank
-        //     .filter(pool => pool.rank >= filters.selectedRankMin && pool.rank <= filters.selectedRankMax)
-        //     // If retiredPoolsToggle is true, show all pools; if false, show only active pools
-        //     .filter(pool => filters.retiredPoolsToggle || pool.is_active)
-    }, [rankedNodes, filters.selectedRankMin, filters.selectedRankMax, filters.retiredPoolsToggle, filters.delegationChangedToggle])
+    }, [eligibleList, filters.selectedRankMin, filters.selectedRankMax])
 
     // Filter node links on filters chosen by user
     const filteredLinks = useMemo(() => {
@@ -291,7 +249,7 @@ export default function BubbleMap() {
         // console.timeEnd('compute filtered links')
 
         return links
-    }, [movementData, filteredNodes, filters.selectedSlotMin, filters.selectedSlotMax])
+    }, [movementData, filters.selectedSlotMin, filters.selectedSlotMax])
 
     // Final nodes and links to be used in the visualization
     // This allows filtering by both nodes and links
@@ -336,9 +294,10 @@ export default function BubbleMap() {
 
     // Merge delegations between same pools and sum their movement_amount for allowed movement types
     const nodeById = useMemo(() => {
-        if (!finalNodes) return new Map()
+        if (!finalNodes.length) return new Map()
         return new Map(finalNodes.filter(p => p && p.pool_id).map(p => [p.pool_id, p]))
     }, [finalNodes])
+    
     const ALLOWED_MOVEMENT_TYPES = ["NON_FINALIZED_REDELEGATION", "NON_FINALIZED_REDELEGATION_PENDING", "FINALIZED_REDELEGATION"]
     
     const redelegationLinks = useMemo(() => {
@@ -379,14 +338,14 @@ export default function BubbleMap() {
         return [minSlot, maxSlot]
     }, [movementData])
 
-    useMemo(() => {
-        console.log("Computed final nodes and links", {
-            finalNodes: finalNodes.length,
-            finalLinks: finalLinks.length,
-            filters: filters,
-            minMaxSlot: [minMaxSlot[0], minMaxSlot[1]]
-        })
-    }, [finalNodes, finalLinks, filters])
+    // useMemo(() => {
+    //     console.log("Computed final nodes and links", {
+    //         finalNodes: finalNodes.length,
+    //         finalLinks: finalLinks.length,
+    //         filters: filters,
+    //         minMaxSlot: [minMaxSlot[0], minMaxSlot[1]]
+    //     })
+    // }, [finalNodes, finalLinks, filters])
 
     // Update selectedSlotMin and selectedSlotMax when minMaxSlot changes
     useEffect(() => {
@@ -398,7 +357,7 @@ export default function BubbleMap() {
         }))
     }, [minMaxSlot])
 
-    // Update selectedRankMin and selectedRankMax when minMaxRank changes
+    // // Update selectedRankMin and selectedRankMax when eligibleList changes
     useEffect(() => {
         if (!eligibleList.length) return
 
@@ -491,10 +450,10 @@ export default function BubbleMap() {
 
     const sortedSlots = finalLinks.map(n => n.slot_no).sort((a, b) => a - b)
 
-    useEffect(() => {
-        if (!finalNodes.length || !finalLinks.length) return
-        console.timeEnd('Total front-end load')
-    }, [finalNodes, finalLinks])
+    // useEffect(() => {
+    //     if (!finalNodes.length || !finalLinks.length) return
+    //     console.timeEnd('Total front-end load')
+    // }, [finalNodes, finalLinks])
 
     // Count nodes and links in final data
     const nodesCount = useMemo(() => finalNodes.length, [finalNodes])
@@ -504,15 +463,15 @@ export default function BubbleMap() {
     if (!rawData) return
 
     return (
-        <main className="font-display text-base flex-grow relative w-full bg-white border-gray-200 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
+        <main className="font-display text-base flex-grow relative w-full bg-white border-gray-200 bg-gray-300 dark:bg-gray-900 flex items-center justify-center text-gray-800 text-xl overflow-hidden">
             {/* Sub menu */}
             <div className="absolute w-full top-2 z-10 px-4 flex justify-between space-x-2">
                 {/* Left */}
                 <div className="flex gap-5">
-                    <button className={`text-base p-2 rounded-sm font-semibold hover:bg-teal-400 hover:text-black cursor-pointer ${isFilterModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleFilterModal}>Filters</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold hover:bg-teal-400 hover:text-black cursor-pointer border border-gray-300 dark:border-gray-500 ${isFilterModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleFilterModal}>Filters</button>
                     <div className="relative w-100">
                         <form onSubmit={handleSearch} className="flex gap-2">
-                            <input type="search" id="search" className="block p-2.5 w-full z-1 h-10 text-base text-gray-900 bg-gray-50 rounded-lg rounded-s-gray-100 rounded-s-2 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:border-blue-500" value={searchQuery}
+                            <input type="search" id="search" className="block p-2.5 w-full z-1 h-10 text-base text-gray-900 bg-gray-50 rounded-lg rounded-s-gray-100 rounded-s-2 border border-gray-300 dark:border-gray-500 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:border-blue-500" value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search by pool name, ticker, id or homepage..." />
                             <button type="submit" className="absolute top-0 end-0 p-2.5 z-10 h-10 text-sm font-medium text-white bg-teal-500 rounded-e-lg border border-teal-700 hover:bg-teal-800 focus:ring-4 focus:outline-none focus:ring-teal-300 dark:bg-teal-600 dark:hover:bg-teal-700 dark:focus:ring-teal-800"><svg className="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
@@ -523,10 +482,10 @@ export default function BubbleMap() {
                 </div>
                 {/* Right */}
                 <div className="flex gap-5">
-                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochDataOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochData}>Epoch statistics</button>
-                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isEpochListOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochList}>Epoch: {filters.epoch}</button>
-                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isTopXModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleTopXModal}>Pools list</button>
-                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer ${isLegendOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleLegend}>Legend</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer border border-gray-300 dark:border-gray-500 ${isEpochDataOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochData}>Epoch statistics</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer border border-gray-300 dark:border-gray-500 ${isEpochListOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleEpochList}>Epoch: {filters.epoch}</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer border border-gray-300 dark:border-gray-500 ${isTopXModalOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleTopXModal}>Pools list</button>
+                    <button className={`text-base p-2 rounded-sm font-semibold  hover:bg-teal-400 hover:text-black cursor-pointer border border-gray-300 dark:border-gray-500 ${isLegendOpen ? "bg-teal-400 text-black" : "bg-white dark:bg-gray-600 text-gray-600 dark:text-white"}`} onClick={toggleLegend}>Legend</button>
                 </div>
             </div>
             {/* Keep showing bubble map of old data if data already exists. If getting initial data, show div */}
@@ -537,7 +496,6 @@ export default function BubbleMap() {
                         onClose={toggleFilterModal}
                         filters={filters}
                         setFilters={setFilters}
-                        // minMaxRank={minMaxRank}
                         minMaxSlot={minMaxSlot}
                         epochRange={epochRange}
                         nodesCount={nodesCount}
@@ -548,7 +506,7 @@ export default function BubbleMap() {
                         eligibleList={eligibleList}
                         rankWindow={RANK_WINDOW}
                     />
-                    <section id="d3-chart-container" className="w-full flex flex-col items-center relative m-0">
+                    <section id="d3-chart-container" className="w-full flex flex-col items-center relative m-0 bg-gray-300 dark:bg-gray-900">
                         {finalNodes.length !== 0 && finalLinks.length !== 0 &&
                             <LayoutWrapper
                                 nodes={finalNodes} links={finalLinks} collapsedLinks={collapsedLinks}
@@ -570,6 +528,7 @@ export default function BubbleMap() {
                         currentEpochData={currentEpochData}
                         nodesCount={nodesCount}
                         linksCount={linksCount}
+                        overSaturatedPoolCount={overSaturatedPoolCount}
                     />
                     <EpochList
                         isOpen={isEpochListOpen}
@@ -587,6 +546,7 @@ export default function BubbleMap() {
                     <Legend
                         isOpen={isLegendOpen}
                         onClose={toggleLegend}
+                        radiusScale={radiusScale}
                     />
                 </>
             )}

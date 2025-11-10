@@ -49,12 +49,6 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
 
     const handleDelegationOnlyChange = (e) => { setFilters(prev => ({ ...prev, delegationChangedToggle: !prev.delegationChangedToggle })) }
 
-    const handleEnter = (e) => {
-        if (e.key === "Enter") {
-            setSearchQuery(e.target.value)
-        }
-    }
-
     return (
         <div className="w-full h-full absolute inset-0 text-gray-600 dark:text-white text-base">
             <div className="z-1 absolute left-10 right-10 bottom-2.5 bg-white dark:bg-gray-600 px-5 py-1 rounded-lg flex flex-col justify-center">

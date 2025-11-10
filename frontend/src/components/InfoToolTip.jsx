@@ -11,7 +11,7 @@ export default function AddrToolTip({ text }) {
 
     return (
         <div
-            className="relative flex items-center gap-2 font-mono cursor-default ml-1"
+            className="relative flex items-center gap-2 font-mono cursor-default"
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
         >
@@ -24,7 +24,7 @@ export default function AddrToolTip({ text }) {
 
             {/* tooltip */}
             {hover && (
-                <div className="w-[18vw] absolute left-1/2 -translate-x-1/2 bottom-6 bg-gray-500 text-white text-xs px-2 py-1 rounded shadow-lg z-10">
+                <div className="min-w-[10vw] max-w-[18vw] absolute left-1/2 -translate-x-1/2 bottom-6 bg-gray-500 text-white text-xs px-2 py-1 rounded shadow-lg z-10">
                     {text}
                 </div>
             )}

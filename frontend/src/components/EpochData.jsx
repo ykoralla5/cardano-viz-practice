@@ -1,6 +1,6 @@
 import * as utils from '../utils/dataTransformers'
 
-export default function EpochData({ isOpen, onClose, currentEpochData, nodesCount, linksCount }) {
+export default function EpochData({ isOpen, onClose, currentEpochData, nodesCount, linksCount, overSaturatedPoolCount }) {
 
     if (!currentEpochData) return
 
@@ -19,8 +19,9 @@ export default function EpochData({ isOpen, onClose, currentEpochData, nodesCoun
                         <p>End date <span className="text-gray-900 dark:text-white">{utils.formatDate(currentEpochData.end_time)}</span></p>
                         <p>Phase <span className="text-gray-900 dark:text-white">{currentEpochData.phase} Era</span></p>
                         <p>Pool count <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.pool_count)}</span></p>
+                        <p>Oversaturated pool count <span className="text-gray-900 dark:text-white">{overSaturatedPoolCount}</span></p>
                         <p>Total Active Stake <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(currentEpochData.total_active_stake)}</span></p>
-                        <p>#Delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
+                        <p># Delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
                         <p>Saturation point <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(Math.round(currentEpochData.saturation_point * 100) / 100)}</span></p>
                         <p>Optimal pool count <span className="text-gray-900 dark:text-white">{currentEpochData.optimal_pool_count}</span></p>
                         <p>Decentralisation <span className="text-gray-900 dark:text-white">{currentEpochData.decentralisation}</span></p>
