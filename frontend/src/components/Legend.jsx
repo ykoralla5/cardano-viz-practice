@@ -30,7 +30,7 @@ export default function Legend({ isOpen, onClose, radiusScale }) {
                             <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                         </div>
                         {/* Legend content */}
-                        <div className="overflow-y-auto max-h-[45vh] pt-3">
+                        <div className="overflow-y-auto pt-3 max-h-[60vh]">
                             {/* Saturation legend */}
                             <div className="flex flex-col gap-2 p-2 border rounded bg-white dark:bg-gray-800 mb-2">
                                 <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Saturation as color of node</div>
@@ -38,6 +38,11 @@ export default function Legend({ isOpen, onClose, radiusScale }) {
                                 <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 bg-[#808080] rounded"></div>
                                     <span className="text-sm text-gray-700 dark:text-gray-300">Retired pools</span>
+                                </div>
+                                {/* Gray */}
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 bg-[#8c6eff] rounded"></div>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">New and not yet active pools</span>
                                 </div>
                                 {/* Green */}
                                 <div className="flex items-center gap-2">

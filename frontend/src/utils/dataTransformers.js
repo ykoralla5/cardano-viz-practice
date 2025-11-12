@@ -61,7 +61,8 @@ export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTim
     // Validate input slot to ensure it's not before Shelley era
      if (slot < startSlot) {
         console.error(`Error: Slot ${slot} is before the Shelley era start slot (${startSlot}).`)
-        return null
+        console.log(slot, startSlot)
+        // return null
     }
 
     const timestamp = startTimestamp + (slot - startSlot)

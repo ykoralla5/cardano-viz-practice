@@ -25,7 +25,7 @@ export default function EpochList({ isOpen, onClose, filters, setFilters, epochs
                         <p className="text-lg font-bold text-gray-900 dark:text-white">Epochs</p>
                         <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                     </div>
-                    <div className="flex-grow overflow-y-auto max-h-[50vh]">
+                    <div className="flex-grow overflow-y-auto max-h-[60vh]">
                     {epochsList.length === 0 ? (
                         <p>No epochs found.</p>
                     ) : (

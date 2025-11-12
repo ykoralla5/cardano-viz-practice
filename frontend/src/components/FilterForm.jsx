@@ -1,8 +1,7 @@
 import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
 import * as utils from '../utils/dataTransformers'
-import { useDebounce } from 'use-debounce'
-import { every } from 'd3'
+import InfoToolTip from './InfoToolTip'
 // import { debounce } from 'lodash'
 
 export default function FilterForm({ isOpen, onClose, filters, setFilters, minMaxRank, minMaxSlot, epochRange, nodesCount, totalNodes, searchQuery, setSearchQuery, eligibleList, rankWindow }) {
@@ -57,6 +56,7 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
                     <label htmlFor="slot-slider" className="self-center">Filter by slot: Showing
                         <span className="font-bold"> {utils.translateSlot(filters.selectedSlotMin)} </span>to
                         <span className="font-bold"> {utils.translateSlot(filters.selectedSlotMax)}</span>
+                        <InfoToolTip text="Different from "/>
                     </label>
                     <Slider
                         range

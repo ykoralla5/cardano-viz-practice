@@ -25,21 +25,23 @@ export default function TopX({ isOpen, onClose, selectedElement, setSelectedElem
     return (
         <>
             {isOpen && (
-                <div className="w-[30vw] absolute right-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-base rounded-md wrap-anywhere text-gray-400 dark:text-gray-400">
+                <div className="w-[40vw] absolute right-5 top-15 bg-white p-5 opacity-95 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 text-base rounded-md wrap-anywhere text-gray-400 dark:text-gray-400">
                     <div className="px-2 flex-shrink-0 flex justify-between items-center">
                         <p className="text-lg font-bold text-gray-900 dark:text-white">Pool list</p>
                         <button className="px-2 py-1 rounded-lg text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-800 hover:bg-teal-300 hover:text-black" onClick={onClose}>Close</button>
                     </div>
-                    <div className="flex-grow overflow-y-auto p-2 max-h-[50vh]">
+                    <div className="flex-grow overflow-y-auto p-2 max-h-[62.5vh]">
                     {nodes.length === 0 ? (
                         <p>No pools found.</p>
                     ) : (
                         <table className="min-w-full border border-gray-300 dark:border-gray-600">
                             <thead>
                                 <tr className="text-left text-gray-700 dark:text-gray-300">
-                                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 w-13">Rank</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 w-13">Rank<span className="text-tiny">(by total stake)</span></th>
                                     <th className="border border-gray-300 dark:border-gray-600 px-2 py-1">Name [Ticker]</th>
                                     <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 w-25">Active Stake</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-1">Input stake</th>
+                                    <th className="border border-gray-300 dark:border-gray-600 px-2 py-1">Output stake</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -51,6 +53,8 @@ export default function TopX({ isOpen, onClose, selectedElement, setSelectedElem
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">#{index + 1}</td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1 font-bold">{p.name} [{p.ticker}]</td>
                                         <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(p.total_stake)}</td>
+                                        <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(p.input_stake)}</td>
+                                        <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">₳ {utils.formatAda(p.output_stake)}</td>
                                     </tr>
                                 ))}
                             </tbody>

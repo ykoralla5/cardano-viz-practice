@@ -1,4 +1,5 @@
 import * as utils from '../utils/dataTransformers'
+import InfoToolTip from './InfoToolTip'
 
 export default function EpochData({ isOpen, onClose, currentEpochData, nodesCount, linksCount, overSaturatedPoolCount }) {
 
@@ -24,7 +25,7 @@ export default function EpochData({ isOpen, onClose, currentEpochData, nodesCoun
                         <p># Delegators <span className="text-gray-900 dark:text-white">{utils.formatNumber(currentEpochData.stake_address_count)}</span></p>
                         <p>Saturation point <span className="text-gray-900 dark:text-white">₳ {utils.formatAda(Math.round(currentEpochData.saturation_point * 100) / 100)}</span></p>
                         <p>Optimal pool count <span className="text-gray-900 dark:text-white">{currentEpochData.optimal_pool_count}</span></p>
-                        <p>Decentralisation <span className="text-gray-900 dark:text-white">{currentEpochData.decentralisation}</span></p>
+                        <div className="flex gap-1">Decentralisation <span className="text-gray-900 dark:text-white">{Math.round(currentEpochData.decentralisation * 100) / 100}</span>{currentEpochData.epoch_no > 200 && <InfoToolTip text="Decentralisation is set to 0 since 257, meaning blocks are fully produced by community nodes and hence, is not relevant for decentralisation any more."/>}</div>
                         <p>Showing <span className="text-gray-900 dark:text-white">{nodesCount}</span> nodes and <span className="text-gray-900 dark:text-white">{linksCount}</span> delegations.</p>
                     </div>
                 </div>

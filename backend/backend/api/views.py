@@ -147,6 +147,21 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
     ## Get pool ids for comparison
     pool_stats_dict = {p['pool_id']: p for p in pool_stats_qs}
 
+    input_stake_qs = models.DelegationSummary.objects \
+            .filter(epoch_no=epoch_number) \
+            .exclude(movement_type='NO_CHANGE') \
+            .values('destination_pool_id') \
+            .annotate(total_input=Sum('amount'))
+    
+    input_stake_dict = {p['destination_pool_id']: p['total_input'] for p in input_stake_qs}
+            
+    output_stake_qs = models.DelegationSummary.objects \
+            .filter(epoch_no=epoch_number) \
+            .values('source_pool_id') \
+            .annotate(total_output=Sum('amount'))
+    
+    output_stake_dict = {p['source_pool_id']: p['total_output'] for p in output_stake_qs}
+
     # For pool ids whose data is not found in current epoch, ex, pool with no delegation change in recent epochs (since epoch_stake only records any changes in stake but not all pools)retired pools, stake not fully redelegated, get pool data from recent epochs below current epoch
     missing_ids = set(delegation_ids) - set(pool_stats_dict.keys())
     
@@ -156,14 +171,14 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
         missing_data = [ {"pool_id": k, "total_stake": v} for k, v in pool_stakes.items() if k in missing_ids ]
         
         pool_views = {
-            pool_id: {"pool_view": pool_view, "pledge": pledge}
-            for pool_id, pool_view, pledge in models.PoolStatsSummary.objects.filter(pool_id__in=missing_ids).order_by('pool_id', '-epoch_no').values_list('pool_id', 'pool_view', 'pledge') }
+            pool_id: {"epoch_no": epoch_no, "pool_view": pool_view, "pledge": pledge}
+            for epoch_no, pool_id, pool_view, pledge in models.PoolStatsSummary.objects.filter(pool_id__in=missing_ids).order_by('pool_id', '-epoch_no').values_list('epoch_no','pool_id', 'pool_view', 'pledge') }
 
         for i in missing_data:
             i['pool_view'] = pool_views.get(i["pool_id"], None).get('pool_view')
             i['delegator_count'] = 0
             i['pledge'] = pool_views.get(i["pool_id"], None).get('pledge')
-            i['is_active'] = False
+            i['is_active'] = False if pool_views.get(i["pool_id"], None).get('epoch_no') < epoch_number else 'Newly Active'
             i['saturation_ratio'] = 0
 
         pool_stats = list(pool_stats_dict.values()) + missing_data
@@ -185,6 +200,8 @@ def get_pool_stats(epoch_number, delegation_ids, pool_stakes):
             i['actual_blocks'] = pool_perf_dict.get(i['pool_id'], {}).get('actual_blocks', 0)
             i['expected_blocks'] = pool_perf_dict.get(i['pool_id'], {}).get('expected_blocks', 0)
             i['performance_ratio'] = utils.safe_divide(i['actual_blocks'], i['expected_blocks'])
+            i['input_stake'] = input_stake_dict.get(i['pool_id'], 0)
+            i['output_stake'] = output_stake_dict.get(i['pool_id'], 0)
 
     logger.info("Took " + str(time.time() - start_time) + " seconds to run get_pool_stats helper function.")
     print("Took " + str(time.time() - start_time) + " seconds to run get_pool_stats helper function.")

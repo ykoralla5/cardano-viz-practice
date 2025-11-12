@@ -113,7 +113,7 @@ export default function BubbleGraph({ nodes, links, collapsedLinks, scales, dime
             .on("mouseover", function (p) { d3.select(this).style("cursor", "pointer") })
 
         nodeGroups.append("circle")
-            .attr("fill", p => !p?.is_active && p?.delegator_count === 0 ? "gray" : saturationScale(p?.saturation_ratio))
+            .attr("fill", p => !p?.is_active && p?.delegator_count === 0 ? "gray" : p?.is_active === 'Newly Active' ? '#8c6eff' : saturationScale(p?.saturation_ratio))
             // d3.interpolateRdYlGn(saturationScale(p.saturation_percent))) // if pool's last delegators moved in previous epoch, fill red, other use saturationScale
             .attr("r", p => p?.radius)
             .datum(p => [p])
@@ -218,7 +218,7 @@ export default function BubbleGraph({ nodes, links, collapsedLinks, scales, dime
             bubblesRef.current
                 .attr("stroke", p => {
                     // if (!p) return "none"
-                    return selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? d3.color("#00ffcc") : !p.is_active ? "gray" : saturationScale(p.saturation_ratio)
+                    return selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? d3.color("#00ffcc") : !p.is_active === 'False' ? "gray" : saturationScale(p.saturation_ratio)
                 })
                 .attr("stroke-opacity", 0.3)
                 .attr("stroke-width", p => selectedElement?.type === "pool" && selectedElement?.id === p.pool_id ? 5 : 2.5)

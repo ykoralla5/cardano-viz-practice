@@ -34,8 +34,7 @@ export default function BubbleMap() {
         delegationChangedToggle: true
     })
 
-    const RANK_WINDOW = 350
-    const SLOT_WINDOW = 1000
+    const RANK_WINDOW = filters.epoch < 450 ? 250 : 500 // Since recent epochs have less activity
 
     // Modal states
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
