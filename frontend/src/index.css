@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+  box-sizing: border-box;
+}
+
+  body {
+  --color-background: white;
+  --text-color: grey-900;
+
+  @apply font-sans bg-[--color-background] text-[--text-color] transition-colors duration-300;
+}
+
+  p, label {
+    @apply text-base
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: center;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-gray-800 dark:text-gray-800;
+  }
+
+  h1 {
+    @apply text-3xl
+  }
+
+  html, body, #root {
+    @apply h-full w-full;
+  }
+
+  section {
+    @apply my-3;
+  }
+}
+
+@theme {
+  /* --font-display: "Poppins", sans-serif; */
+  --text-tiny: 0.625rem;
+  --text-sm: 0.725rem;
+  --text-base: 0.875rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  --text-7xl: 4.5rem;
+  --text-8xl: 6rem;
+  --text-9xl: 8rem;
+  --color-background: white;
+  --text-color: grey-900;
+}
+
+.dark {
+  --color-primary: #4ade80;    /* Brighter green for dark mode */
+  --color-muted: #334155;      /* Muted slate color */
+  --color-tertiary: #455468;   /* Medium gray with blue tint */
+  --color-surface: #1e293b;    /* Dark blue-gray for surfaces */
+  --color-accent: #94a3b8;     /* Medium-light gray accent */
+  --color-secondary: #064e3b;  /* Dark teal-green */
+  --color-content: #f1f5f9;    /* Off-white text */
+  --color-background: #262626; /* Very dark blue-gray background */
+  --text-color: #D9D9D9;
+}
+
+@layer components {
+  /* .chart-content {
+  @apply h-[90vh] w-screen
+} */
+
+  .t-slider {
+    & .rc-slider {
+    @apply h-2!;
+  }
+
+  & .rc-slider-rail {
+    @apply h-2! bg-gray-500 dark:bg-gray-200!;
+  }
+
+  & .rc-slider-track {
+    @apply h-2! bg-blue-500! dark:bg-teal-600!;
+  }
+
+  & .rc-slider-handle {
+    @apply w-5! h-5! bg-teal-300! border-teal-300!;
+  }
+  }
+}

@@ -1,0 +1,118 @@
+Summary tables
+
+delegation_summary: get all delegations in all epochs
+
+CREATE TABLE IF NOT EXISTS delegation_summary (
+    delegation_id BIGINT NOT NULL,
+    epoch_no BIGINT NOT NULL,
+    slot_no word63type NOT NULL,
+    tx_id BIGINT NOT NULL,
+    addr_id BIGINT NOT NULL,
+    source_pool_id BIGINT,
+    destination_pool_id BIGINT,
+    amount lovelace,
+    last_epoch word31type,
+    movement_type TEXT,
+    computed_at TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (epoch_no, tx_id, addr_id, delegation_id)
+);
+
+CREATE TABLE IF NOT EXISTS pool_perf_summary (
+    epoch_no word31type,
+    pool_id BIGINT,
+    actual_blocks BIGINT,
+    expected_blocks NUMERIC(20,5),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (epoch_no, pool_id)
+);
+
+CREATE TABLE IF NOT EXISTS pool_stats_summary (
+    epoch_no word31type,
+    pool_id BIGINT,
+    pool_view TEXT,
+    total_stake NUMERIC(20, 5),
+    delegator_count BIGINT,
+    pledge lovelace,
+    is_active BOOLEAN,
+    saturation_ratio NUMERIC(20, 10),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (epoch_no, pool_id)
+);
+
+CREATE TABLE IF NOT EXISTS epoch_summary (
+    epoch_no word31type,
+    phase TEXT NOT NULL,
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
+    pledge_influence NUMERIC(5,4),
+    decentralisation NUMERIC(5,4),
+    optimal_pool_count INTEGER,
+    saturation_point NUMERIC(20, 5),
+    total_active_stake NUMERIC,
+    pool_count INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    stake_address_count INTEGER,
+    PRIMARY KEY (epoch_no)
+);
+
+
+sudo touch logs/delegation_summary.log
+sudo touch logs/pool_perf_summary.log
+sudo touch logs/pool_stats_summary.log
+sudo touch logs/epoch_summary.log
+sudo chown postgres:postgres logs/*.log*
+sudo chmod 640 logs/*.log*
+
+sudo -u postgres crontab -e
+ADD the lines:
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz/psql_incremental_updates/logs/delegation_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log 2>&1
+
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log 2>&1
+
+*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log 2>&1
+
+*/30 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1
+
+*/30 * * * * echo "[$(date)] Starting epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1 && echo "[$(date)] Finished epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log
+
+
+/home/cardano-viz-practice/psql_incremental_updates/logs/*.log {
+	daily
+	rotate 8
+	compress
+	delaycompress
+    	missingok
+    	notifempty
+	create 640 postgres postgres
+}
+
+Done:
+
+-- Index for filtering by epoch (incremental insert)
+CREATE INDEX idx_pool_stats_epoch ON pool_stats_summary(epoch_no);
+
+-- Index for incremental updates / filtering by epoch
+CREATE INDEX idx_pool_perf_epoch ON pool_perf_summary(epoch_no);
+
+-- Index for filtering by epoch
+CREATE INDEX idx_delegation_epoch ON delegation_summary(epoch_no);
+
+-- Optional: index by pool if you query per pool often
+CREATE INDEX idx_pool_stats_pool ON pool_stats_summary(pool_id);
+
+CREATE INDEX idx_epochs_summ_epoch ON epoch_summary(epoch_no);
+
+---------------------------------------------------------------------------
+
+
+
+
+
+-- Optional: index by pool
+CREATE INDEX idx_pool_perf_pool ON pool_perf_summary(pool_id);
+
+
+
+-- Index for filtering by pool
+CREATE INDEX idx_delegation_source_pool ON delegation_summary(source_pool_id);
+CREATE INDEX idx_delegation_dest_pool ON delegation_summary(destination_pool_id);
