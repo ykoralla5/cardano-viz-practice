@@ -18,7 +18,7 @@ export default function Header({  }) {
                 <div className="flex lg:flex-1">
                     <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
                         <img src={logoWhite} className="h-8 w-auto" alt="Cardano Logo" />
-                        <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Cardano Blockchain Dashboard</span>
+                        <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Cardano Dashboard</span>
                     </a>
                 </div>
                 <div className="flex lg:hidden ml-auto">
