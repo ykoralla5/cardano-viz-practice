@@ -76,17 +76,22 @@ def get_delegation_summary(epoch_number):
 
     print("Took " + str(time.time() - start_time_5) + " seconds to convert to missing ids to dict.")
 
+    start_time_6 = time.time()
+
     addr_ids_views_qs = models.StakeAddress.objects \
             .filter(id__in=addr_ids) \
-            .distinct('id') \
             .values('id', 'view')
     
     # To dict for fast lookup
     addr_ids_views_map = { d['id']: d['view'] for d in addr_ids_views_qs }
+
+    print("Took " + str(time.time() - start_time_6) + " seconds to get pool views.")
     
     # Percentage change in stake calculation
     results = []
     count = 0
+
+    start_time_7 = time.time()
     
     for d in delegations:
         source_stake = final_stakes.get(d['source_pool_id'], 0) if d['source_pool_id'] else None
@@ -123,9 +128,11 @@ def get_delegation_summary(epoch_number):
             'dest_stake_change_percent': pct_change_dest,
             'movement_type': d['movement_type']
         })
+
+    print("Took " + str(time.time() - start_time_7) + " seconds to compute missing percents.")
     
-    print(missing_ids)
-    print("Count is " + str(count))
+    # print(missing_ids)
+    # print("Count is " + str(count))
 
     logger.info("Took " + str(time.time() - start_time) + " seconds to run get_delegation_summary helper function.")
     print("Took " + str(time.time() - start_time) + " seconds to run get_delegation_summary helper function.")
@@ -263,8 +270,8 @@ def get_epoch_snapshot(request):
         "epoch_detail": epoch_detail
     })
 
-    logger.info("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot view.")
-    print("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot view.")
+    logger.info("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot for " + str(epoch_number) + " epoch's view.")
+    print("Took " + str(time.time() - start_time) + " seconds to run get_epoch_snapshot for " + str(epoch_number) + " epoch's view.")
 
     return Response(combined)
 

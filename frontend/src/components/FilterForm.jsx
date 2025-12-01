@@ -2,7 +2,6 @@ import Slider from 'rc-slider'
 import 'rc-slider/assets/index.css'
 import * as utils from '../utils/dataTransformers'
 import InfoToolTip from './InfoToolTip'
-// import { debounce } from 'lodash'
 
 export default function FilterForm({ isOpen, onClose, filters, setFilters, minMaxRank, minMaxSlot, epochRange, nodesCount, totalNodes, searchQuery, setSearchQuery, eligibleList, rankWindow }) {
     const { selectedRankMin, selectedRankMax, selectedSlotMin, selectedSlotMax, epoch, retiredPoolsToggle, delegationChangedToggle } = filters
@@ -14,7 +13,7 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
         if (newMax - newMin > rankWindow) {
             setFilters(prev => ({
                 ...prev,
-                selectedRankMax: newMax - rankWindow
+                selectedRankMax: newMin + rankWindow
             }))
         } else {
             setFilters(prev => ({
@@ -30,7 +29,7 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
         if (newMax - newMin > rankWindow) {
             setFilters(prev => ({
                 ...prev,
-                selectedRankMax: newMin + rankWindow
+                selectedRankMin: newMax - rankWindow
             }))
         } else {
             setFilters(prev => ({
@@ -53,10 +52,10 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
             <div className="z-1 absolute left-10 right-10 bottom-2.5 bg-white dark:bg-gray-600 px-5 py-1 rounded-lg flex flex-col justify-center">
                 {/* Slot selector */}
                 <div className="flex flex-col justify-center pb-5">
-                    <label htmlFor="slot-slider" className="self-center">Filter by slot: Showing
-                        <span className="font-bold"> {utils.translateSlot(filters.selectedSlotMin)} </span>to
+                    <label htmlFor="slot-slider" className="self-center flex gap-2">Filter by slot: Showing
+                        <span className="font-bold"> {utils.translateSlot(filters.selectedSlotMin)}</span>to
                         <span className="font-bold"> {utils.translateSlot(filters.selectedSlotMax)}</span>
-                        <InfoToolTip text="Different from "/>
+                        <InfoToolTip text="Different from epoch start and end times this filter is used on the timestamps of when the transactions were made and not when they became active."/>
                     </label>
                     <Slider
                         range
@@ -65,9 +64,11 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
                         max={minMaxSlot[1]}
                         step={1}
                         allowCross={false} // dont allow handles to cross each other
-                        pushable={1} // allow handles to push each other
+                        pushable={10000} // allow handles to push each other
                         value={[filters.selectedSlotMin, filters.selectedSlotMax]}
-                        onChange={handleSlotChange} />
+                        onChange={handleSlotChange} 
+                        draggableTrack={true}
+                    />
                 </div>
             </div>
             {/* Filters modal*/}
@@ -82,18 +83,19 @@ export default function FilterForm({ isOpen, onClose, filters, setFilters, minMa
                             <p>Min max rank: 0, {eligibleList.length - 1}, min max selected value: {filters.selectedRankMin}, {filters.selectedRankMax}</p>
                             {eligibleList.length > 0 && (
                                 <Slider
-                                range
-                                className='t-slider'
-                                min={0}
-                                max={eligibleList.length - 1}
-                                step={1}
-                                allowCross={false} // dont allow handles to cross each other
-                                pushable={1} // allow handles to push each other
-                                value={[filters.selectedRankMin, filters.selectedRankMax]}
-                                onChange={([newMin, newMax]) => {
-                                    if (newMin !== filters.selectedRankMin) onLeftHandleChange(newMin)
-                                    else onRightHandleChange(newMax)
-                                }}
+                                    range
+                                    draggableTrack
+                                    className='t-slider'
+                                    min={0}
+                                    max={eligibleList.length - 1}
+                                    step={1}
+                                    allowCross={false} // dont allow handles to cross each other
+                                    // pushable={10} // allow handles to push each other
+                                    value={[filters.selectedRankMin, filters.selectedRankMax]}
+                                    onChange={([newMin, newMax]) => {
+                                        if (newMin !== filters.selectedRankMin) onLeftHandleChange(newMin)
+                                        else onRightHandleChange(newMax)
+                                    }}
                             />)}
                         </div>
                         {/* Show only pools whose delegation changed */}

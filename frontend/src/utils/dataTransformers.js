@@ -51,12 +51,12 @@ export function formatDate(isoString) {
      * @param {number} startSlot - Slot number of start of Shelley era (default: 4493600 for mainnet)
      * @returns {Date} Timestamp of the slot
 */
-export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTimestamp = 1596491091, startSlot = 4493600) {
-    const epochDelay = 2 // Since we are showing active stake from 2 epochs ago
-    const slotsPerEpoch = daysPerEpoch * 24 * 60 * 60 / slotDuration // 432000
+export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTimestamp = 1596059091, startSlot = 4492800) {
+    // const epochDelay = 2 // Since we are showing active stake from 2 epochs ago
+    // const slotsPerEpoch = daysPerEpoch * 24 * 60 * 60 / slotDuration // 432000
     
     // Adjust startTimestamp to account for epoch delay
-    startTimestamp += epochDelay * slotsPerEpoch * slotDuration
+    // startTimestamp += slotsPerEpoch * slotDuration
 
     // Validate input slot to ensure it's not before Shelley era
      if (slot < startSlot) {
@@ -65,7 +65,7 @@ export function translateSlot(slot, daysPerEpoch = 5, slotDuration = 1, startTim
         // return null
     }
 
-    const timestamp = startTimestamp + (slot - startSlot)
+    const timestamp = startTimestamp + (slot - startSlot) * slotDuration;
     const date = new Intl.DateTimeFormat('en-GB', {
         year: 'numeric',
         month: '2-digit',

@@ -1,6 +1,5 @@
 import * as d3 from 'd3'
-import { Children, useEffect, useRef, useState, useMemo } from 'react'
-import { CircleLoader } from 'react-spinners'
+import { useEffect, useRef } from 'react'
 
 /* Generate bubble map */
 export default function BubbleGraph({ nodes, links, collapsedLinks, scales, dimensions, selectedElement, setSelectedElement, selectedElementData, setSelectedElementData }) {
@@ -214,7 +213,7 @@ export default function BubbleGraph({ nodes, links, collapsedLinks, scales, dime
         }
 
         if (bubblesRef.current) {
-            console.log(bubblesRef.current.data())
+            // console.log(bubblesRef.current.data())
             bubblesRef.current
                 .attr("stroke", p => {
                     // if (!p) return "none"

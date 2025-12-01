@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import React, { useEffect, useMemo, useState, useCallback, use } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import LayoutWrapper from '../components/LayoutWrapper'
 import FilterForm from '../components/FilterForm'
 import InfoPanel from '../components/InfoPanel'
@@ -29,12 +29,12 @@ export default function BubbleMap() {
         selectedRankMax: null,
         selectedSlotMin: null,
         selectedSlotMax: null,
-        epoch: 560,
+        epoch: 378,
         retiredPoolsToggle: true,
         delegationChangedToggle: true
     })
 
-    const RANK_WINDOW = filters.epoch < 450 ? 250 : 500 // Since recent epochs have less activity
+    const RANK_WINDOW = filters.epoch < 350 ? 250 : 500 // Since recent epochs have less activity
 
     // Modal states
     const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
@@ -279,6 +279,8 @@ export default function BubbleMap() {
 
         let nodes = filteredNodes
             .filter(n => links.some(l => l.source === n.pool_id || l.target === n.pool_id))
+            .reverse(p => p.total_stake)
+            .map((p, index) => ({...p, rank: index + 1}))
 
         // Include selected element so that it always shows when moving from epoch to epoch
         if (selectedElement && !nodes.some(n => n.pool_id === selectedElement.id)) {
@@ -373,6 +375,7 @@ export default function BubbleMap() {
     // set selectedElementData when selectedElement changes
     useEffect(() => {
         if (!finalNodes.length || !finalLinks.length) return
+        // console.log(finalLinks.filter(l => l.movement_type !== "NON_FINALIZED_REDELEGATION" && l.movement_type !== "NON_FINALIZED_REDELEGATION_PENDING" && l.movement_type !== "FINALIZED_REDELEGATION"))
 
         // setSelectedElementData(null) // reset selectedElementData to avoid showing old data while new data is being fetched
         const fetchElementData = async () => {
@@ -390,6 +393,7 @@ export default function BubbleMap() {
                                     source: finalNodes.find(n => n.pool_id === l.source),
                                     target: finalNodes.find(n => n.pool_id === l.target)
                                 }))
+                            console.log(delegationData)
                         }
                         else if (type === 'link') {
                             const linkMap = new Map(collapsedLinks.map(l => [`${l.source.pool_id}-${l.target.pool_id}`, l]))
@@ -404,6 +408,8 @@ export default function BubbleMap() {
                                     target: finalNodes.find(n => n.pool_id === l.target)
                                 })
                                 )
+                                // console.log(delegationData.map(l => l.movement_type))
+                                    // (l => l.movement_type !== "NON_FINALIZED_REDELEGATION" || l.movement_type !== "NON_FINALIZED_REDELEGATION_PENDING" || l.movement_type !== "FINALIZED_REDELEGATION"))
                             }
                         }
                         setSelectedElementData({ "data": data || null, "delegationData": delegationData || null })
@@ -420,8 +426,9 @@ export default function BubbleMap() {
 
     }, [selectedElement, finalNodes, finalLinks])
 
-    console.log('Selected element:', selectedElement)
-    console.log('Selected element data:', selectedElementData)
+    // console.log('Selected element:', selectedElement)
+    // console.log('Selected element data:', selectedElementData)
+    // console.log(selectedElementData.delegationData.map(l => l.movement_type))
 
     const handleSearch = useCallback((e) => {
         e.preventDefault()
