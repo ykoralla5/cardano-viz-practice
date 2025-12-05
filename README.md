@@ -31,7 +31,8 @@ Node version 20.19.2
 NVM version 0.39.7  
 TailwindCSS version 4.1.14  
 
-## System requirements:
+## Other System requirements: 
+A minimum of 250 GB is required to store the relevant tables for the dashboard and for the summary tables. 
 
 ## Installation guide:
 Pre-requisites: Running Cardano *cardano_db_sync* node
