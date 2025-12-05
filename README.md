@@ -23,6 +23,14 @@ The workflow of the system architecture is summarized in the picture below:
 
 ## Software versions used:
 
+React version 19.1.0  
+Django 5.2.1  
+Python version 3.11.6  
+PostgreSQL version 15.7  
+Node version 20.19.2  
+NVM version 0.39.7  
+TailwindCSS version 4.1.14  
+
 ## System requirements:
 
 ## Installation guide:
