@@ -63,21 +63,18 @@ npm install
 
 ### Environment variables
 
-Create a .env file
-```
-cd backend
-```
+Create a .env file inside the backend/.env folder and add variables to connect to the backend PostgreSQL databases for Django and the post-processed Cardano database. Currently, the :
 
-DB_DJANGO_NAME=django_database_name
-DB_DJANGO_USER=django_database_name
-DB_DJANGO_PASSWORD=django_database_name
-DB_DJANGO_HOST=localhost
-DB_DJANGO_PORT=5432
-DB_CARDANO_NAME=postprocessed_cardano_database_name
-DB_CARDANO_USER=postprocessed_cardano_database_user
-DB_CARDANO_PASSWORD=postprocessed_cardano_database_password
-DB_CARDANO_HOST=localhost
-DB_CARDANO_PORT=5432
+DB_DJANGO_NAME=django_database_name  
+DB_DJANGO_USER=django_database_name  
+DB_DJANGO_PASSWORD=django_database_name  
+DB_DJANGO_HOST=localhost  
+DB_DJANGO_PORT=5432  
+DB_CARDANO_NAME=postprocessed_cardano_database_name  
+DB_CARDANO_USER=postprocessed_cardano_database_user  
+DB_CARDANO_PASSWORD=postprocessed_cardano_database_password  
+DB_CARDANO_HOST=localhost  
+DB_CARDANO_PORT=5432  
 
 ### Running the visualization tool
 
