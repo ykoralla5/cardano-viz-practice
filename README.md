@@ -26,7 +26,7 @@ The workflow of the system architecture is summarized in the picture below:
 ## System requirements:
 
 ## Installation guide:
-Pre-requisits: Running Cardano *cardano_db_sync* node
+Pre-requisites: Running Cardano *cardano_db_sync* node
 
 Clone repository.
 
@@ -49,6 +49,15 @@ Run database migrations
 python manage.py migrate
 ```
 
+### Generating summary tables
+
+Cron jobs run every few minutes to generate epoch-wise summary rows of transaction data. The cron jobs run the .sql files in the `psql_incremental_updates` folder. The SQL files also create the summary tables. Ensure that these tables are given relevant permissions so that Django can access them (ideally provide only SELECT priviliges). Logs are stored and rotated for every 8 days.
+
+Example command to create a cron job that runs every 5 minutes:
+```
+*/5 * * * * echo "[$(date)] Starting delegation_summary_update" >> /cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log 2>&1 && echo "[$(date)] Finished delegation_summary_update" >> /cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log
+```
+
 ### React
 Create new React Vite app in the frontend directory:
 ```
@@ -63,7 +72,7 @@ npm install
 
 ### Environment variables
 
-Create a .env file inside the backend/.env folder and add variables to connect to the backend PostgreSQL databases for Django and the post-processed Cardano database. Currently, the :
+Create a .env file inside the `backend` folder and add variables to connect to the backend PostgreSQL databases for Django and the post-processed Cardano database. Currently, the :
 
 DB_DJANGO_NAME=django_database_name  
 DB_DJANGO_USER=django_database_name  
@@ -88,5 +97,5 @@ Run the frontend:
 npm run dev
 ```
 
-Access the frontend on: http://localhost:5173
+Access the frontend on: http://localhost:5173  
 Access the Django API endpoints on: http://localhost:8000/api
