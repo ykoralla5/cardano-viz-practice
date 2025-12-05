@@ -13,6 +13,25 @@ BEGIN
     END IF;
 END $$;
 
+-- Create table if not exists
+CREATE TABLE IF NOT EXISTS public.epoch_summary
+(
+    epoch_no word31type NOT NULL,
+    phase text COLLATE pg_catalog."default" NOT NULL,
+    start_time timestamp with time zone,
+    end_time timestamp with time zone,
+    pledge_influence numeric(5,4),
+    decentralisation numeric(5,4),
+    optimal_pool_count integer,
+    saturation_point numeric(20,5),
+    total_active_stake numeric,
+    pool_count integer,
+    created_at timestamp with time zone DEFAULT now(),
+    stake_address_count integer,
+    circulating_supply numeric,
+    CONSTRAINT epoch_summary_pkey PRIMARY KEY (epoch_no)
+);
+
 -- Main upsert logic
 
 WITH last_epoch AS (

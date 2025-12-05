@@ -13,6 +13,17 @@ BEGIN
     END IF;
 END $$;
 
+-- Create table if not exists
+CREATE TABLE IF NOT EXISTS public.pool_perf_summary
+(
+    epoch_no word31type NOT NULL,
+    pool_id bigint NOT NULL,
+    actual_blocks bigint,
+    expected_blocks numeric(20,5),
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT pool_perf_summary_pkey PRIMARY KEY (epoch_no, pool_id)
+)
+
 -- Main upsert logic
 
 WITH last_epoch AS (

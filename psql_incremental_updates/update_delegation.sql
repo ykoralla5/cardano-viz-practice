@@ -13,6 +13,23 @@ BEGIN
     END IF;
 END $$;
 
+-- Create table if not exists
+CREATE TABLE IF NOT EXISTS public.delegation_summary
+(
+    delegation_id bigint NOT NULL,
+    epoch_no bigint NOT NULL,
+    slot_no word63type NOT NULL,
+    tx_id bigint NOT NULL,
+    addr_id bigint NOT NULL,
+    source_pool_id bigint,
+    destination_pool_id bigint,
+    amount lovelace,
+    last_epoch word31type,
+    movement_type text COLLATE pg_catalog."default",
+    computed_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT delegation_summary_pkey PRIMARY KEY (epoch_no, tx_id, addr_id, delegation_id)
+);
+
 -- Main upsert logic
 
 INSERT INTO delegation_summary (
