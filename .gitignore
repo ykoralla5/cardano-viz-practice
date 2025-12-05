@@ -31,7 +31,6 @@ start_dev.sh
 /frontend/src/data.json
 
 # backend
-/backend/backend/cardano_backend/settings.py
 /backend/.env
 /backend/venv/
 /backend/backend/api/__pycache__

@@ -32,10 +32,10 @@ if not os.path.exists(LOG_DIR):
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-w(i3!6f5o5%+6o%3-i#19@_a^6=2by2jrnua+25!&tggi7kmy&'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1'] # Add 'yourdomain .com' when in production
 
