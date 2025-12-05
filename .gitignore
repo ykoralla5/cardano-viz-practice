@@ -27,8 +27,7 @@ start_dev.sh
 
 # frontend
 /frontend/node_modules/
-/frontend/.env
-/frontend/src/data.json
+/frontend/src/example-data/
 
 # backend
 /backend/.env
