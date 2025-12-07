@@ -1,6 +1,4 @@
-Summary tables
-
-delegation_summary: get all delegations in all epochs
+Create summary tables:
 
 CREATE TABLE IF NOT EXISTS delegation_summary (
     delegation_id BIGINT NOT NULL,
@@ -55,28 +53,9 @@ CREATE TABLE IF NOT EXISTS epoch_summary (
     PRIMARY KEY (epoch_no)
 );
 
+Logging:
 
-sudo touch logs/delegation_summary.log
-sudo touch logs/pool_perf_summary.log
-sudo touch logs/pool_stats_summary.log
-sudo touch logs/epoch_summary.log
-sudo chown postgres:postgres logs/*.log*
-sudo chmod 640 logs/*.log*
-
-sudo -u postgres crontab -e
-ADD the lines:
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz/psql_incremental_updates/logs/delegation_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log 2>&1
-
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log 2>&1
-
-*/5 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log 2>&1
-
-*/30 * * * * echo "----- $(date) -----" >> /home/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1
-
-*/30 * * * * echo "[$(date)] Starting epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /home/matija/cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1 && echo "[$(date)] Finished epoch_summary_update" >> /home/matija/cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log
-
-
-/home/cardano-viz-practice/psql_incremental_updates/logs/*.log {
+/cardano-viz-practice/psql_incremental_updates/logs/*.log {
 	daily
 	rotate 8
 	compress
@@ -86,33 +65,35 @@ ADD the lines:
 	create 640 postgres postgres
 }
 
-Done:
+sudo touch logs/delegation_summary.log
+sudo touch logs/pool_perf_summary.log
+sudo touch logs/pool_stats_summary.log
+sudo touch logs/epoch_summary.log
+sudo chown postgres:postgres logs/*.log*
+sudo chmod 640 logs/*.log*
 
--- Index for filtering by epoch (incremental insert)
+Creating cron jobs using user postgres:
+
+sudo -u postgres crontab -e
+Add the lines:
+*/5 * * * * echo "----- $(date) -----" >> /cardano-viz/psql_incremental_updates/logs/delegation_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_delegation.sql >> /cardano-viz-practice/psql_incremental_updates/logs/delegation_summary.log 2>&1
+
+*/5 * * * * echo "----- $(date) -----" >> /cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_pool_stats.sql >> /cardano-viz-practice/psql_incremental_updates/logs/pool_stats_summary.log 2>&1
+
+*/5 * * * * echo "----- $(date) -----" >> /cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_pool_perf.sql >> /cardano-viz-practice/psql_incremental_updates/logs/pool_perf_summary.log 2>&1
+
+*/30 * * * * echo "----- $(date) -----" >> /cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1
+
+*/30 * * * * echo "[$(date)] Starting epoch_summary_update" >> /cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log && psql -d cardano_db_filtered -f /cardano-viz-practice/psql_incremental_updates/update_epoch.sql >> /cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log 2>&1 && echo "[$(date)] Finished epoch_summary_update" >> /cardano-viz-practice/psql_incremental_updates/logs/epoch_summary.log
+
+Indexes:
+
 CREATE INDEX idx_pool_stats_epoch ON pool_stats_summary(epoch_no);
 
--- Index for incremental updates / filtering by epoch
 CREATE INDEX idx_pool_perf_epoch ON pool_perf_summary(epoch_no);
 
--- Index for filtering by epoch
 CREATE INDEX idx_delegation_epoch ON delegation_summary(epoch_no);
 
--- Optional: index by pool if you query per pool often
 CREATE INDEX idx_pool_stats_pool ON pool_stats_summary(pool_id);
 
 CREATE INDEX idx_epochs_summ_epoch ON epoch_summary(epoch_no);
-
----------------------------------------------------------------------------
-
-
-
-
-
--- Optional: index by pool
-CREATE INDEX idx_pool_perf_pool ON pool_perf_summary(pool_id);
-
-
-
--- Index for filtering by pool
-CREATE INDEX idx_delegation_source_pool ON delegation_summary(source_pool_id);
-CREATE INDEX idx_delegation_dest_pool ON delegation_summary(destination_pool_id);
