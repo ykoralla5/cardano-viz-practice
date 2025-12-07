@@ -11,8 +11,7 @@ A visualization tool to show Cardano's staking network.
 ### Data collection
 Relevant data is collected in real-time from a Cardano node's PostgreSQL database into a secondary PostgreSQL database using PostgreSQL's publication/subscription feature. Cron jobs run every few minutes to summarize raw transaction data into epoch-wise data and store them in summary tables. Indexes on base tables (tables with exact structure and data from main Cardano node) and summary tables (filtered and aggregated data) help improve query performance.
 
-The code for the cron jobs are available under --.
-
+The code for the cron jobs are available in the TXT file at [backend/backend/psql.txt](https://github.com/ykoralla5/cardano-viz-practice/blob/main/backend/backend/psql.txt).
 ### Backend
 The backend uses Django. Django's models help map to database tables and Django's Views help aggregate data from various models and format them to JSON to be used by the frontend.
 
